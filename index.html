@@ -529,13 +529,61 @@ tr:hover td{background:var(--surface-2)}
     </div>
   </div>
 
-  <!-- SUMMARY (Phase 3 placeholder) -->
-  <div class="panel" id="panel-summary">
-    <div class="card">
-      <div class="card-title">📋 สรุปการใช้พลังงานตามกลุ่ม</div>
-      <div class="section-empty">กำลังพัฒนาในเฟส 3</div>
+<!-- ════════════════════════════════════════════════════════════
+     PHASE 3 — หน้าสรุป + ปฏิทิน + กราฟระบายสี
+     ════════════════════════════════════════════════════════════ -->
+
+<!-- ──────────── SUMMARY PANEL ──────────── -->
+<div class="panel" id="panel-summary">
+  <div class="card">
+    <div class="card-title">📋 สรุปการใช้พลังงานตามกลุ่ม</div>
+
+    <!-- Preset ช่วงเวลา -->
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm" onclick="setSumRange('month',1)">เดือนนี้</button>
+      <button class="btn btn-ghost btn-sm" onclick="setSumRange('month',3)">3 เดือน</button>
+      <button class="btn btn-ghost btn-sm" onclick="setSumRange('month',6)">6 เดือน</button>
+      <button class="btn btn-ghost btn-sm" onclick="setSumRange('year')">ปีนี้</button>
+      <button class="btn btn-ghost btn-sm" onclick="setSumRange('all')">ทั้งหมด</button>
     </div>
+
+    <!-- Custom range -->
+    <div class="f-2col">
+      <div class="f-row"><label class="f-label">จากวันที่</label><input class="f-input" type="date" id="sum-from"></div>
+      <div class="f-row"><label class="f-label">ถึงวันที่</label><input class="f-input" type="date" id="sum-to"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-sm" onclick="loadSummary()">📊 แสดงสรุป</button>
+      <button class="btn btn-yellow btn-sm" onclick="exportSummaryExcel()">📥 Export</button>
+    </div>
+    <div id="sum-gran-label" style="margin-top:8px;font-size:11px;color:var(--text-3)"></div>
   </div>
+
+  <div class="card">
+    <div id="summary-area"><div class="section-empty">📋 เลือกช่วงเวลาเพื่อดูสรุป</div></div>
+  </div>
+</div>
+<!-- Calender -->
+    <div class="card">
+      <div class="card-title">📅 ปฏิทินวันทำงาน</div>
+      <div class="info-box" style="margin-bottom:8px">
+        ปกติ จ–ศ = วันทำงาน, ส–อา = วันหยุด<br>
+        เพิ่มเฉพาะวันที่<strong>ต่างจากปกติ</strong> เช่น เสาร์ทำงาน หรือวันหยุดพิเศษ
+      </div>
+      <div class="f-3col">
+        <div class="f-row"><label class="f-label">วันที่</label><input class="f-input" type="date" id="cal-date"></div>
+        <div class="f-row">
+          <label class="f-label">ประเภท</label>
+          <select class="f-input" id="cal-type">
+            <option value="work">วันทำงาน</option>
+            <option value="holiday">วันหยุด</option>
+          </select>
+        </div>
+        <div class="f-row"><label class="f-label">หมายเหตุ</label><input class="f-input" id="cal-note" placeholder="เช่น สงกรานต์"></div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="addCalendarDay()">➕ เพิ่มวันพิเศษ</button>
+      <div id="cal-list" style="margin-top:12px"></div>
+    </div>
 
   <!-- QR -->
   <div class="panel" id="panel-qr">
@@ -665,7 +713,24 @@ tr:hover td{background:var(--surface-2)}
 /* ════════════════════════════════════════════════════════════
    SUBSTATION MASTER LOGGER V2 — Frontend (Phase 2)
    ════════════════════════════════════════════════════════════ */
-
+/* ───────── GROUP CONFIG ───────── */
+const GROUP_CONFIG = [
+  { id:'GRP-01', name:'BODY',        sum:['SUB-15','SUB-18','SUB-19','SUB-20','SUB-24','SUB-27','SUB-28X','SUB-29X','SUB-30X'], minus:[] },
+  { id:'GRP-02', name:'PAINT',       sum:['SUB-09','SUB-10','SUB-11','SUB-12','SUB-38'], minus:['AC-02','CT-AC','CT-ED','CHIL-AS3','CHIL-AS4','CT-AS','CHIL-AS12'] },
+  { id:'GRP-03', name:'LA',          sum:['SUB-21','SUB-22'], minus:[] },
+  { id:'GRP-04', name:'UA',          sum:['SUB-05X'], minus:[] },
+  { id:'GRP-05', name:'PT7,8',       sum:['SUB-02','SUB-03','SUB-04X'], minus:[] },
+  { id:'GRP-06', name:'FRAME',       sum:['SUB-33','SUB-34','SUB-36X','SUB-37'], minus:[] },
+  { id:'GRP-07', name:'OFFICE',      sum:['SUB-31'], minus:[] },
+  { id:'GRP-08', name:'FR',          sum:['SUB-08'], minus:['CT-AC','CT-ED','WWT-01','RO-01','RO-02','DI-01'] },
+  { id:'GRP-09', name:'OLD CANTEEN', sum:['CANT-10'], minus:[] },
+  { id:'GRP-10', name:'AIR COMP',    sum:['SUB-06','SUB-07','AC-02'], minus:[] }
+];
+ 
+let summaryRaw      = [];   // จาก server
+let summaryExpanded = {};
+let summaryComputed = null; // เก็บไว้ export
+   
 /* ───────── CONFIG ───────── */
 const API_URL     = 'https://script.google.com/macros/s/AKfycbwEk5XzggkBU5KfMVFWHfWXd6Y4zxCXBZX0J8YGw2Pos-xjNNttNMe350lrklcxWOHZZA/exec';
 const QR_BASE_URL = 'https://ramesimct.github.io/Substation-V2/';
@@ -1034,13 +1099,311 @@ function goTab(name){
   const idx   = TAB_ORDER.indexOf(name);
   const tabEl = document.querySelectorAll('.tab')[idx];
   if(tabEl) tabEl.classList.add('active');
-
+ 
   if(name === 'data')     { renderData(); renderStats(); }
   if(name === 'chart')    { populateDDs(); renderChart(); renderAllChart(); }
+  if(name === 'summary')  { setSumRange('month',3); }
   if(name === 'qr')       { renderQR(); }
-  if(name === 'settings') { renderSubList(); }
+  if(name === 'settings') { renderSubList(); renderCalendarList(); }
 }
-
+/* ════════════════════════════════════════════════════════════
+   DATE RANGE PRESETS
+   ════════════════════════════════════════════════════════════ */
+function setSumRange(type, months){
+  const now   = new Date();
+  const toVal = now.toISOString().split('T')[0];
+  let fromVal;
+  if(type === 'month'){
+    const from = new Date(now);
+    from.setMonth(from.getMonth() - months + 1);
+    from.setDate(1);
+    fromVal = from.toISOString().split('T')[0];
+  } else if(type === 'year'){
+    fromVal = `${now.getFullYear()}-01-01`;
+  } else {
+    fromVal = '';
+  }
+  document.getElementById('sum-from').value = fromVal;
+  document.getElementById('sum-to').value   = toVal;
+  loadSummary();
+}
+ 
+function getGranularity(fromVal, toVal){
+  if(!fromVal) return 'month';
+  const from = new Date(fromVal);
+  const to   = toVal ? new Date(toVal) : new Date();
+  const days = Math.ceil((to - from) / 864e5);
+  if(days <= 31) return 'day';
+  if(days <= 90) return 'week';
+  return 'month';
+}
+ 
+function granLabel(g){ return {day:'รายวัน',week:'รายสัปดาห์',month:'รายเดือน'}[g] || 'รายเดือน'; }
+ 
+function fmtPeriod(period, gran){
+  if(gran === 'day'){
+    const [y,m,d] = period.split('-');
+    return `${parseInt(d)}/${parseInt(m)}`;
+  }
+  if(gran === 'week') return period.split('-')[1];
+  const MONTHS = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const [y,m] = period.split('-');
+  return `${MONTHS[parseInt(m)]}${String(y).slice(2)}`;
+}
+ 
+/* ════════════════════════════════════════════════════════════
+   LOAD SUMMARY
+   ════════════════════════════════════════════════════════════ */
+async function loadSummary(){
+  const fromVal = document.getElementById('sum-from').value;
+  const toVal   = document.getElementById('sum-to').value;
+  const gran    = getGranularity(fromVal, toVal);
+ 
+  document.getElementById('sum-gran-label').textContent =
+    `📊 แสดงแบบ: ${granLabel(gran)}` + (fromVal ? ` | ${fromVal} — ${toVal||'ปัจจุบัน'}` : ' | ทั้งหมด');
+ 
+  document.getElementById('summary-area').innerHTML = '<div class="section-empty">⏳ กำลังโหลด...</div>';
+ 
+  try{
+    const res = await apiPost({ action:'getMonthlySummary', dateFrom:fromVal||null, dateTo:toVal||null, granularity:gran });
+    if(!res || !res.success) throw new Error(res?.error || 'Server error');
+    summaryRaw = res.summary || [];
+    renderSummary(gran);
+  }catch(e){
+    document.getElementById('summary-area').innerHTML = `<div class="warn-box">❌ โหลดไม่ได้: ${e.message}</div>`;
+  }
+}
+ 
+/* ════════════════════════════════════════════════════════════
+   CALCULATE GROUP — used = ค่าแรก period ถัดไป − ค่าแรก period นี้
+   เดือนสุดท้าย (ไม่มี period ถัดไป) = lastKwh − firstKwh ของเดือนนั้น
+   ════════════════════════════════════════════════════════════ */
+function calcGroups(){
+  // map: { subId: { period: {firstKwh, lastKwh} } }
+  const meterMap = {};
+  summaryRaw.forEach(r => {
+    if(!meterMap[r.subId]) meterMap[r.subId] = {};
+    meterMap[r.subId][r.period] = { firstKwh:r.firstKwh, lastKwh:r.lastKwh };
+  });
+ 
+  const periods = [...new Set(summaryRaw.map(r => r.period))].sort();
+ 
+  // used ของ meter แต่ละตัวต่อ period
+  function meterUsed(subId, period, periodIdx){
+    const cur = meterMap[subId]?.[period];
+    if(!cur) return 0;
+    const sub  = subs.find(s => s.id === subId);
+    const mult = sub?.multiplier !== undefined ? parseFloat(sub.multiplier) : 1;
+ 
+    // หา period ถัดไปที่ตู้นี้มีข้อมูล
+    for(let k = periodIdx + 1; k < periods.length; k++){
+      const next = meterMap[subId]?.[periods[k]];
+      if(next){
+        return Math.max(0, next.firstKwh - cur.firstKwh) * mult;
+      }
+    }
+    // ไม่มี period ถัดไป → ใช้ last − first ของ period นี้เอง (เดือนปัจจุบัน)
+    return Math.max(0, cur.lastKwh - cur.firstKwh) * mult;
+  }
+ 
+  const groups = GROUP_CONFIG.map(grp => {
+    const periodTotals = {};
+    periods.forEach((p, pIdx) => {
+      const sumV   = grp.sum.reduce((a,id)   => a + meterUsed(id, p, pIdx), 0);
+      const minusV = grp.minus.reduce((a,id) => a + meterUsed(id, p, pIdx), 0);
+      periodTotals[p] = sumV - minusV;
+    });
+ 
+    const meterDetails = [
+      ...grp.sum.map(id => ({ id, type:'sum',
+        name: subs.find(s=>s.id===id)?.name || id,
+        pt: Object.fromEntries(periods.map((p,pi) => [p, meterUsed(id,p,pi)])) })),
+      ...grp.minus.map(id => ({ id, type:'minus',
+        name: subs.find(s=>s.id===id)?.name || id,
+        pt: Object.fromEntries(periods.map((p,pi) => [p, meterUsed(id,p,pi)])) }))
+    ];
+ 
+    const grandTotal = Object.values(periodTotals).reduce((a,v)=>a+v,0);
+    return { ...grp, periodTotals, meterDetails, grandTotal };
+  });
+ 
+  const overallByPeriod = {};
+  periods.forEach(p => { overallByPeriod[p] = groups.reduce((a,g) => a + (g.periodTotals[p]||0), 0); });
+  const overallTotal = groups.reduce((a,g) => a + g.grandTotal, 0);
+ 
+  // ✅ validate config — meter ใน group ที่ไม่มีในระบบ
+  const allIds = new Set(subs.map(s => s.id));
+  const missing = [];
+  GROUP_CONFIG.forEach(g => {
+    [...g.sum, ...g.minus].forEach(id => { if(!allIds.has(id)) missing.push(`${g.name}: ${id}`); });
+  });
+ 
+  return { groups, periods, overallByPeriod, overallTotal, missing };
+}
+ 
+/* ════════════════════════════════════════════════════════════
+   RENDER SUMMARY TABLE
+   ════════════════════════════════════════════════════════════ */
+function renderSummary(gran){
+  const area = document.getElementById('summary-area');
+  if(!summaryRaw.length){ area.innerHTML = '<div class="section-empty">📭 ไม่มีข้อมูลในช่วงที่เลือก</div>'; return; }
+ 
+  const data = calcGroups();
+  summaryComputed = { ...data, gran };
+  const { groups, periods, overallByPeriod, overallTotal, missing } = data;
+ 
+  const periodHeaders = periods.map(p =>
+    `<th style="min-width:72px;text-align:right;padding:6px 8px">${fmtPeriod(p, gran)}</th>`).join('');
+ 
+  const groupRows = groups.map(grp => {
+    const isExp  = summaryExpanded[grp.id];
+    const toggle = isExp ? '▼' : '▶';
+    const main = `<tr onclick="toggleSumGroup('${grp.id}')" style="cursor:pointer">
+      <td style="padding:8px 10px;font-weight:600">
+        <span style="color:var(--accent);margin-right:5px">${toggle}</span>${grp.name}
+      </td>
+      ${periods.map(p => {
+        const v = grp.periodTotals[p]||0;
+        return `<td style="text-align:right;padding:6px 8px;font-weight:600;color:${v<0?'var(--red)':'var(--text-1)'}">${Math.round(v).toLocaleString()}</td>`;
+      }).join('')}
+      <td style="text-align:right;padding:6px 8px;font-weight:700;color:${grp.grandTotal<0?'var(--red)':'var(--accent)'}">${Math.round(grp.grandTotal).toLocaleString()}</td>
+    </tr>`;
+ 
+    const details = isExp ? grp.meterDetails.map(m => {
+      const isMinus = m.type === 'minus';
+      const col = isMinus ? 'var(--red)' : 'var(--text-2)';
+      return `<tr style="background:var(--surface-2);font-size:11px">
+        <td style="padding:4px 10px 4px 26px;color:${col}">${isMinus?'−':'+'} ${m.id} <span style="color:var(--text-3)">${m.name}</span></td>
+        ${periods.map(p => `<td style="text-align:right;padding:4px 8px;color:${col}">${Math.round(m.pt[p]||0).toLocaleString()}</td>`).join('')}
+        <td style="text-align:right;padding:4px 8px;color:${col}">${Math.round(Object.values(m.pt).reduce((a,v)=>a+v,0)).toLocaleString()}</td>
+      </tr>`;
+    }).join('') : '';
+ 
+    return main + details;
+  }).join('');
+ 
+  const totalRow = `<tr style="background:var(--surface-3);border-top:2px solid var(--border);font-weight:700">
+    <td style="padding:9px 10px">รวมทั้งหมด</td>
+    ${periods.map(p => `<td style="text-align:right;padding:8px;color:var(--accent)">${Math.round(overallByPeriod[p]||0).toLocaleString()}</td>`).join('')}
+    <td style="text-align:right;padding:8px;color:var(--green)">${Math.round(overallTotal).toLocaleString()}</td>
+  </tr>`;
+ 
+  const warnMissing = missing.length
+    ? `<div class="warn-box" style="margin-bottom:8px">⚠️ Meter ที่ตั้งใน Group แต่ไม่มีในระบบ: ${missing.join(', ')}</div>` : '';
+ 
+  area.innerHTML = `
+    ${warnMissing}
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:var(--surface-3)">
+          <th style="text-align:left;padding:8px 10px;min-width:120px">กลุ่ม</th>
+          ${periodHeaders}
+          <th style="text-align:right;padding:8px;color:var(--accent)">รวม</th>
+        </tr></thead>
+        <tbody>${groupRows}${totalRow}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text-3)">หน่วย: kWh · กด ▶ ดูรายละเอียด meter (+ บวก, − ลบ)</div>`;
+}
+ 
+function toggleSumGroup(gid){
+  summaryExpanded[gid] = !summaryExpanded[gid];
+  const gran = getGranularity(document.getElementById('sum-from').value, document.getElementById('sum-to').value);
+  renderSummary(gran);
+}
+ 
+/* ════════════════════════════════════════════════════════════
+   EXPORT SUMMARY → Excel
+   ════════════════════════════════════════════════════════════ */
+function exportSummaryExcel(){
+  if(!summaryComputed || !summaryComputed.groups.length) return toast('ยังไม่มีข้อมูลสรุป','err');
+  const { groups, periods, overallByPeriod, overallTotal, gran } = summaryComputed;
+ 
+  const rows = [];
+  const header = { 'กลุ่ม':'' };
+  periods.forEach(p => header[fmtPeriod(p,gran)] = '');
+  header['รวม'] = '';
+ 
+  groups.forEach(grp => {
+    const row = { 'กลุ่ม': grp.name };
+    periods.forEach(p => row[fmtPeriod(p,gran)] = Math.round(grp.periodTotals[p]||0));
+    row['รวม'] = Math.round(grp.grandTotal);
+    rows.push(row);
+  });
+  const totalRow = { 'กลุ่ม':'รวมทั้งหมด' };
+  periods.forEach(p => totalRow[fmtPeriod(p,gran)] = Math.round(overallByPeriod[p]||0));
+  totalRow['รวม'] = Math.round(overallTotal);
+  rows.push(totalRow);
+ 
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:18}, ...periods.map(()=>({wch:12})), {wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+  XLSX.writeFile(wb, `Summary_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('✅ Export สรุปแล้ว','ok');
+}
+ 
+/* ════════════════════════════════════════════════════════════
+   WORK CALENDAR
+   ════════════════════════════════════════════════════════════ */
+// คืนประเภทวัน: 'work' | 'holiday'
+function getDayType(dateStr){
+  const found = workCalendar.find(c => c.date === dateStr);
+  if(found) return found.type;
+  const dow = new Date(dateStr).getDay(); // 0=อา 6=ส
+  return (dow === 0 || dow === 6) ? 'holiday' : 'work';
+}
+ 
+function getDayNote(dateStr){
+  return workCalendar.find(c => c.date === dateStr)?.note || '';
+}
+ 
+async function addCalendarDay(){
+  const date = document.getElementById('cal-date').value;
+  const type = document.getElementById('cal-type').value;
+  const note = document.getElementById('cal-note').value.trim();
+  if(!date) return toast('เลือกวันที่ด้วย','err');
+ 
+  // อัปเดต local ทันที
+  const idx = workCalendar.findIndex(c => c.date === date);
+  if(idx >= 0) workCalendar[idx] = { date, type, note };
+  else workCalendar.push({ date, type, note });
+  persist();
+  renderCalendarList();
+  document.getElementById('cal-date').value = '';
+  document.getElementById('cal-note').value = '';
+  toast('✅ เพิ่มวันพิเศษแล้ว','ok');
+ 
+  try{ await apiPost({ action:'setCalendarDay', date, type, note }); }
+  catch(e){ toast('⚠️ Sync ปฏิทินล้มเหลว','warn'); }
+}
+ 
+async function removeCalendarDay(date){
+  if(!confirm(`ลบวันพิเศษ ${fmtDate(date)}?`)) return;
+  workCalendar = workCalendar.filter(c => c.date !== date);
+  persist();
+  renderCalendarList();
+  toast('ลบแล้ว');
+  try{ await apiPost({ action:'deleteCalendarDay', date }); }catch(e){}
+}
+ 
+function renderCalendarList(){
+  const box = document.getElementById('cal-list');
+  if(!box) return;
+  if(!workCalendar.length){ box.innerHTML = '<div class="section-empty">ยังไม่มีวันพิเศษ</div>'; return; }
+  const sorted = [...workCalendar].sort((a,b) => b.date.localeCompare(a.date));
+  box.innerHTML = sorted.map(c => `<div class="sub-row">
+    <div class="sub-row-info">
+      <div class="sub-row-id" style="color:${c.type==='work'?'var(--green)':'var(--orange)'}">
+        ${fmtDate(c.date)} · ${c.type==='work'?'🟢 ทำงาน':'🔴 หยุด'}
+      </div>
+      <div class="sub-row-meta">${c.note||'—'}</div>
+    </div>
+    <div class="sub-row-actions">
+      <button class="btn btn-danger btn-sm" onclick="removeCalendarDay('${c.date}')">🗑</button>
+    </div>
+  </div>`).join('');
+}
 /* ════════════════════════════════════════════════════════════
    PAGINATION
    ════════════════════════════════════════════════════════════ */
@@ -1596,42 +1959,52 @@ function renderChart(){
   const area    = document.getElementById('chart-area');
   const summary = document.getElementById('chart-summary');
   if(!subId){ area.innerHTML='<div class="section-empty">📈 เลือก Substation เพื่อดูกราฟ</div>'; summary.innerHTML=''; return; }
-
+ 
   const recs = getSubRecs(subId);
   if(!recs.length){ area.innerHTML=`<div class="section-empty">📭 ยังไม่มีข้อมูลสำหรับ ${subId}</div>`; summary.innerHTML=''; return; }
-
+ 
   const byDate = {};
   recs.forEach(r => {
     if(!byDate[r.date]) byDate[r.date] = { date:r.date, used:0, count:0, lastTime:r.time||'' };
-    byDate[r.date].used  += parseFloat(r.used) || 0;
+    byDate[r.date].used += parseFloat(r.used) || 0;
     byDate[r.date].count++;
     if((r.time||'') > byDate[r.date].lastTime) byDate[r.date].lastTime = r.time||'';
   });
-
+ 
   const days     = Object.values(byDate).sort((a,b) => a.date.localeCompare(b.date));
   const showDays = days.slice(-20);
   const maxVal   = Math.max(...showDays.map(d => d.used), 1);
   const CHART_H  = 150;
   const sub      = subs.find(s => s.id === subId);
   const dec      = sub ? sub.decimal : 0;
-
+ 
   const bars = showDays.map(d => {
     const pct    = Math.max(0, d.used) / maxVal;
     const barH   = Math.max(3, Math.round(pct * CHART_H));
-    const valStr = parseFloat(d.used.toFixed(dec)).toLocaleString('th-TH', { maximumFractionDigits:dec });
-    return `<div class="vbar-col" title="${fmtTime(d.lastTime)} ${fmtDate(d.date)} — ${valStr} kWh (${d.count} readings)">
+    const valStr = parseFloat(d.used.toFixed(dec)).toLocaleString('th-TH',{maximumFractionDigits:dec});
+    const dType  = getDayType(d.date);
+    const dNote  = getDayNote(d.date);
+    // ✅ สีตามประเภทวัน — วันหยุดสีจาง
+    const barBg  = dType === 'holiday'
+      ? 'linear-gradient(180deg,var(--orange),var(--red))'
+      : 'linear-gradient(180deg,var(--green),var(--accent))';
+    const opacity = dType === 'holiday' ? '0.65' : '1';
+    const tipNote = dNote ? ` · ${dNote}` : (dType==='holiday'?' · วันหยุด':'');
+    return `<div class="vbar-col" title="${fmtTime(d.lastTime)} ${fmtDate(d.date)} — ${valStr} kWh${tipNote}">
       <div class="vbar-val">${valStr}</div>
-      <div class="vbar-space"><div class="vbar-bar" style="height:${barH}px"></div></div>
-      <div class="vbar-label">${fmtTime(d.lastTime)}<br>${fmtChartDate(d.date)}</div>
+      <div class="vbar-space"><div class="vbar-bar" style="height:${barH}px;background:${barBg};opacity:${opacity}"></div></div>
+      <div class="vbar-label" style="color:${dType==='holiday'?'var(--orange)':'var(--text-3)'}">${fmtTime(d.lastTime)}<br>${fmtChartDate(d.date)}</div>
     </div>`;
   }).join('');
-
+ 
   area.innerHTML = `
     <div style="font-size:9px;color:var(--text-3);margin-bottom:6px;font-family:var(--font-mono)">
-      แสดงสูงสุด 20 วันล่าสุด · รวม ${days.length} วัน · hover เพื่อดูรายละเอียด
+      แสดง 20 วันล่าสุด · รวม ${days.length} วัน ·
+      <span style="color:var(--green)">▮</span> ทำงาน
+      <span style="color:var(--orange)">▮</span> หยุด
     </div>
     <div class="vbar-scroll"><div class="vbar-chart">${bars}</div></div>`;
-
+ 
   const totalUsed = showDays.reduce((a,d) => a + d.used, 0);
   const avgDaily  = showDays.length ? totalUsed / showDays.length : 0;
   summary.innerHTML = `
