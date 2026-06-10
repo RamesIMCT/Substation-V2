@@ -1361,7 +1361,9 @@ function exportSummaryExcel(){
 function getDayType(dateStr){
   const found = workCalendar.find(c => c.date === dateStr);
   if(found) return found.type;
-  const dow = new Date(dateStr).getDay(); // 0=อา 6=ส
+  // ✅ parse แบบ local ไม่ให้ timezone เลื่อนวัน
+  const [y,m,d] = String(dateStr).split('-').map(Number);
+  const dow = new Date(y, m-1, d).getDay();
   return (dow === 0 || dow === 6) ? 'holiday' : 'work';
 }
  
@@ -1987,20 +1989,21 @@ function renderChart(){
   const area    = document.getElementById('chart-area');
   const summary = document.getElementById('chart-summary');
   if(!subId){ area.innerHTML='<div class="section-empty">📈 เลือก Substation เพื่อดูกราฟ</div>'; summary.innerHTML=''; return; }
-
+ 
   let recs = getSubRecs(subId);
   if(fromVal) recs = recs.filter(r => r.date >= fromVal);
   if(toVal)   recs = recs.filter(r => r.date <= toVal);
-
+ 
   if(!recs.length){ area.innerHTML='<div class="section-empty">📭 ไม่มีข้อมูลในช่วงที่เลือก</div>'; summary.innerHTML=''; return; }
-
-  // auto granularity: ≤31วัน=รายวัน, ≤90=สัปดาห์, >90=เดือน
-  const spanDays = fromVal ? Math.ceil((new Date(toVal||Date.now()) - new Date(fromVal))/864e5) : 999;
+ 
+  // ✅ คำนวณช่วงวันแบบ local (ไม่ให้ timezone เลื่อน)
+  function parseLocal(s){ const [y,m,d]=String(s).split('-').map(Number); return new Date(y,m-1,d); }
+  const spanDays = fromVal ? Math.ceil((parseLocal(toVal||new Date().toISOString().slice(0,10)) - parseLocal(fromVal))/864e5) : 999;
   const gran = spanDays <= 31 ? 'day' : spanDays <= 90 ? 'week' : 'month';
-
+ 
   const sub = subs.find(s => s.id === subId);
   const dec = sub ? sub.decimal : 0;
-
+ 
   // aggregate ตาม granularity
   const byKey = {};
   recs.forEach(r => {
@@ -2008,7 +2011,7 @@ function renderChart(){
     if(gran === 'day'){
       key = r.date; label = fmtChartDate(r.date);
     } else if(gran === 'week'){
-      const d = new Date(r.date); const day = d.getDay()||7;
+      const d = parseLocal(r.date); const day = d.getDay()||7;
       d.setDate(d.getDate()+4-day);
       const ys = new Date(d.getFullYear(),0,1);
       const wk = Math.ceil((((d-ys)/864e5)+1)/7);
@@ -2022,17 +2025,19 @@ function renderChart(){
     byKey[key].used += parseFloat(r.used)||0;
     byKey[key].count++;
   });
-
+ 
   const items  = Object.values(byKey).sort((a,b) => a.key.localeCompare(b.key));
   const showItems = gran === 'day' ? items.slice(-31) : items;
   const maxVal = Math.max(...showItems.map(d => d.used), 1);
   const CHART_H = 150;
-
+ 
+  // ✅ แท่งน้อย = พอดีจอ, เยอะ = เลื่อนได้
+  const fitScreen = showItems.length <= 16;
+ 
   const bars = showItems.map(d => {
     const pct  = Math.max(0,d.used)/maxVal;
     const barH = Math.max(3, Math.round(pct*CHART_H));
     const valStr = parseFloat(d.used.toFixed(dec)).toLocaleString('th-TH',{maximumFractionDigits:dec});
-    // ระบายสีเฉพาะรายวัน
     let barBg = 'linear-gradient(180deg,var(--green),var(--accent))', opacity = '1', labelCol = 'var(--text-3)';
     if(gran === 'day'){
       const dType = getDayType(d.firstDate);
@@ -2040,21 +2045,23 @@ function renderChart(){
         barBg = 'linear-gradient(180deg,var(--orange),var(--red))'; opacity = '0.65'; labelCol = 'var(--orange)';
       }
     }
-    return `<div class="vbar-col" title="${d.label} — ${valStr} kWh (${d.count} ครั้ง)">
-      <div class="vbar-val">${valStr}</div>
+    const colStyle = fitScreen ? 'flex:1;min-width:0' : 'min-width:46px';
+    return `<div class="vbar-col" style="${colStyle}" title="${d.label} — ${valStr} kWh (${d.count} ครั้ง)">
+      <div class="vbar-val" style="font-size:${fitScreen?'8px':'9px'}">${valStr}</div>
       <div class="vbar-space"><div class="vbar-bar" style="height:${barH}px;background:${barBg};opacity:${opacity}"></div></div>
       <div class="vbar-label" style="color:${labelCol}">${d.label}</div>
     </div>`;
   }).join('');
-
+ 
   const granTxt = {day:'รายวัน',week:'รายสัปดาห์',month:'รายเดือน'}[gran];
+  const chartStyle = fitScreen ? 'min-width:100%' : 'min-width:max-content';
   area.innerHTML = `
     <div style="font-size:9px;color:var(--text-3);margin-bottom:6px;font-family:var(--font-mono)">
       ${granTxt} · ${showItems.length} ช่วง ·
       ${gran==='day' ? '<span style="color:var(--green)">▮</span> ทำงาน <span style="color:var(--orange)">▮</span> หยุด' : ''}
     </div>
-    <div class="vbar-scroll"><div class="vbar-chart">${bars}</div></div>`;
-
+    <div class="vbar-scroll"><div class="vbar-chart" style="${chartStyle}">${bars}</div></div>`;
+ 
   const totalUsed = showItems.reduce((a,d) => a+d.used, 0);
   const avgVal    = showItems.length ? totalUsed/showItems.length : 0;
   summary.innerHTML = `
@@ -2065,7 +2072,6 @@ function renderChart(){
       </span>
     </div>`;
 }
-
 function renderAllChart(){
   const area    = document.getElementById('all-chart');
   const summary = subs.map(s => ({
