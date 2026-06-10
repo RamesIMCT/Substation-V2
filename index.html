@@ -336,9 +336,11 @@ tr:hover td{background:var(--surface-2)}
     <div class="hdr-sub" id="hdr-small">กำลังโหลด...</div>
   </div>
   <div class="hdr-right">
-    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
-    <div class="sync-dot" id="sync-dot"></div>
-  </div>
+     <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
+     <!-- ✅ ปุ่มสลับโหมด/ออกจากระบบ -->
+     <button class="theme-btn" id="logout-btn" onclick="logout()" title="สลับโหมด/ออกจากระบบ">🔄</button>
+     <div class="sync-dot" id="sync-dot"></div>
+   </div>
 </div>
 
 <div class="sync-banner" id="sync-banner">
@@ -751,6 +753,21 @@ function getSubRecs(subId){
 /* ════════════════════════════════════════════════════════════
    LOGIN — 2 ทาง
    ════════════════════════════════════════════════════════════ */
+// ── ออกจากระบบ / กลับไปหน้าเลือกโหมด ──
+function logout(){
+  if(!confirm('ออกจากระบบและกลับไปหน้าเลือกโหมด?')) return;
+  localStorage.removeItem('loginMode');
+  currentUser = '';
+  // รีเซ็ตหน้า login กลับไปขั้นเลือกโหมด
+  document.getElementById('login-admin').style.display  = 'none';
+  document.getElementById('login-choose').style.display = 'block';
+  document.getElementById('login-err').style.display    = 'none';
+  // แสดง login gate อีกครั้ง
+  const gate = document.getElementById('login-gate');
+  gate.style.display = 'flex';
+  gate.style.opacity = '1';
+}
+   
 function enterBasic(){
   currentUser = '';
   applyAppMode('basic');
