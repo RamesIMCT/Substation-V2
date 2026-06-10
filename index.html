@@ -540,12 +540,35 @@ tr:hover td{background:var(--surface-2)}
     </div>
   </div>
 
-<!-- ════════════════════════════════════════════════════════════
+  <!-- QR -->
+  <div class="panel" id="panel-qr">
+    <div class="card">
+      <div class="card-title">🔲 QR Code ทุก Substation</div>
+      <div class="info-box">
+        <strong>Base URL:</strong> <span style="font-family:var(--font-mono);font-size:9px;color:var(--accent)" id="qr-url-preview">—</span><br>
+        <small style="color:var(--text-3)">สแกน QR เปิดตู้ได้ทันที</small>
+      </div>
+      <div class="qr-grid" id="qr-grid"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="panel" id="panel-settings">
+    <div class="card">
+      <div class="card-title">☁️ Google Sheets API</div>
+      <div class="info-box"><strong>API URL ถูก lock</strong><br>ทุกอุปกรณ์ sync อัตโนมัติ</div>
+      <div id="api-status" style="display:none;margin-bottom:10px"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm" onclick="testConn()">🔌 ทดสอบ</button>
+        <button class="btn btn-yellow btn-sm" onclick="loadFromServer()">🔄 โหลด</button>
+      </div>
+    </div>
+     <!-- ════════════════════════════════════════════════════════════
      PHASE 3 — หน้าสรุป + ปฏิทิน + กราฟระบายสี
      ════════════════════════════════════════════════════════════ -->
 
 <!-- ──────────── SUMMARY PANEL ──────────── -->
-<div class="panel" id="panel-summary">
+<div class="panel" id="panel-settings">
   <div class="card">
     <div class="card-title">📋 สรุปการใช้พลังงานตามกลุ่ม</div>
 
@@ -594,30 +617,6 @@ tr:hover td{background:var(--surface-2)}
       </div>
       <button class="btn btn-primary btn-full" onclick="addCalendarDay()">➕ เพิ่มวันพิเศษ</button>
       <div id="cal-list" style="margin-top:12px"></div>
-    </div>
-
-  <!-- QR -->
-  <div class="panel" id="panel-qr">
-    <div class="card">
-      <div class="card-title">🔲 QR Code ทุก Substation</div>
-      <div class="info-box">
-        <strong>Base URL:</strong> <span style="font-family:var(--font-mono);font-size:9px;color:var(--accent)" id="qr-url-preview">—</span><br>
-        <small style="color:var(--text-3)">สแกน QR เปิดตู้ได้ทันที</small>
-      </div>
-      <div class="qr-grid" id="qr-grid"></div>
-    </div>
-  </div>
-
-  <!-- SETTINGS -->
-  <div class="panel" id="panel-settings">
-    <div class="card">
-      <div class="card-title">☁️ Google Sheets API</div>
-      <div class="info-box"><strong>API URL ถูก lock</strong><br>ทุกอุปกรณ์ sync อัตโนมัติ</div>
-      <div id="api-status" style="display:none;margin-bottom:10px"></div>
-      <div class="btn-row">
-        <button class="btn btn-primary btn-sm" onclick="testConn()">🔌 ทดสอบ</button>
-        <button class="btn btn-yellow btn-sm" onclick="loadFromServer()">🔄 โหลด</button>
-      </div>
     </div>
 
     <div class="card">
