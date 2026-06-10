@@ -743,7 +743,7 @@ let summaryExpanded = {};
 let summaryComputed = null; // เก็บไว้ export
    
 /* ───────── CONFIG ───────── */
-const API_URL     = 'https://script.google.com/macros/s/AKfycbwEk5XzggkBU5KfMVFWHfWXd6Y4zxCXBZX0J8YGw2Pos-xjNNttNMe350lrklcxWOHZZA/exec';
+const API_URL     = 'https://script.google.com/macros/s/AKfycbySPerX40QtuH_7jp_u0gdb1I5VPBexVMU5Wk18KIBfaKBaZKlTa4OyQXUgrUwbWW2DZg/exec';
 const QR_BASE_URL = 'https://ramesimct.github.io/Substation-V2/';
 const ABNORMAL_MULTIPLIER = 5; // เตือนถ้าใช้เกิน 5 เท่าของค่าเฉลี่ย
 
@@ -1034,6 +1034,12 @@ async function testConn(){
    COMPUTE USED — คำนวณตอนแสดงผล (ไม่เก็บใน sheet)
    ════════════════════════════════════════════════════════════ */
 function computeUsed(rawRecords){
+  rawRecords.forEach(r => {
+    if(r.date && String(r.date).includes('T')){
+      r.date = String(r.date).slice(0, 10);
+    }
+  });
+
   const groups = {};
   rawRecords.forEach(r => { if(!groups[r.subId]) groups[r.subId]=[]; groups[r.subId].push(r); });
 
