@@ -280,6 +280,7 @@ tr:hover td{background:var(--surface-2)}
   60%       { transform: translateX(-5px); }
   80%       { transform: translateX(5px); }
 }
+.cmp-mode-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
    
 </style>
 </head>
@@ -545,38 +546,42 @@ tr:hover td{background:var(--surface-2)}
      ════════════════════════════════════════════════════════════ -->
 
 <!-- ──────────── SUMMARY PANEL ──────────── -->
+<!-- ════════════════════════════════════════════════════════════
+     แทนที่ panel-summary เดิมทั้งบล็อก ด้วยอันนี้
+     ════════════════════════════════════════════════════════════ -->
 <div class="panel" id="panel-summary">
+
+  <!-- ── ตารางรายงานรายวันทั้งเดือน ── -->
   <div class="card">
-    <div class="card-title">📋 สรุปการใช้พลังงานตามกลุ่ม</div>
-
-    <!-- Preset ช่วงเวลา -->
-    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn btn-ghost btn-sm" onclick="setSumRange('month',1)">เดือนนี้</button>
-      <button class="btn btn-ghost btn-sm" onclick="setSumRange('month',3)">3 เดือน</button>
-      <button class="btn btn-ghost btn-sm" onclick="setSumRange('month',6)">6 เดือน</button>
-      <button class="btn btn-ghost btn-sm" onclick="setSumRange('year')">ปีนี้</button>
-      <button class="btn btn-ghost btn-sm" onclick="setSumRange('all')">ทั้งหมด</button>
-    </div>
-
-    <!-- Custom range -->
+    <div class="card-title">📋 รายงานการใช้ไฟฟ้ารายเดือน</div>
     <div class="f-2col">
-      <div class="f-row"><label class="f-label">จากวันที่</label><input class="f-input" type="date" id="sum-from"></div>
-      <div class="f-row"><label class="f-label">ถึงวันที่</label><input class="f-input" type="date" id="sum-to"></div>
+      <div class="f-row">
+        <label class="f-label">เลือกเดือน</label>
+        <select class="f-input" id="rep-month" onchange="loadReport()"></select>
+      </div>
+      <div class="f-row" style="display:flex;align-items:flex-end">
+        <button class="btn btn-yellow btn-full" onclick="exportReportExcel()">📥 Export Excel</button>
+      </div>
     </div>
-    <div class="btn-row">
-      <button class="btn btn-primary btn-sm" onclick="loadSummary()">📊 แสดงสรุป</button>
-      <button class="btn btn-yellow btn-sm" onclick="exportSummaryExcel()">📥 Export</button>
-    </div>
-    <div id="sum-gran-label" style="margin-top:8px;font-size:11px;color:var(--text-3)"></div>
+    <div id="report-area"><div class="section-empty">📋 เลือกเดือนเพื่อดูรายงาน</div></div>
   </div>
 
+  <!-- ── กราฟเทียบต่อกลุ่ม ── -->
   <div class="card">
-    <div id="summary-area"><div class="section-empty">📋 เลือกช่วงเวลาเพื่อดูสรุป</div></div>
+    <div class="card-title">📊 กราฟเทียบการใช้ไฟแต่ละกลุ่ม</div>
+    <div class="f-row">
+      <label class="f-label">เลือกกลุ่ม</label>
+      <select class="f-input" id="cmp-group" onchange="renderCompareChart()"></select>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm cmp-mode-btn active" id="cmp-day"   onclick="setCompareMode('day')">รายวัน</button>
+      <button class="btn btn-ghost btn-sm cmp-mode-btn"        id="cmp-month" onclick="setCompareMode('month')">รายเดือน</button>
+      <button class="btn btn-ghost btn-sm cmp-mode-btn"        id="cmp-year"  onclick="setCompareMode('year')">รายปี</button>
+    </div>
+    <div id="compare-area"><div class="section-empty">เลือกกลุ่มเพื่อดูกราฟ</div></div>
   </div>
+
 </div>
-<!-- Calender -->
-
-
   <!-- QR -->
   <div class="panel" id="panel-qr">
     <div class="card">
@@ -724,22 +729,37 @@ tr:hover td{background:var(--surface-2)}
 
 <script>
 /* ════════════════════════════════════════════════════════════
-   SUBSTATION MASTER LOGGER V2 — Frontend (Phase 2) แก้ไขการแบ่งกลุ่ม
+   SUBSTATION MASTER LOGGER V2 — Frontend (รายงานรายเดือน + กราฟเทียบ)
    ════════════════════════════════════════════════════════════ */
-/* ───────── GROUP CONFIG ───────── */
-const GROUP_CONFIG = [
-  { id:'GRP-01', name:'BODY',        sum:['SUB-15','SUB-18','SUB-19','SUB-20','SUB-24','SUB-27','SUB-28','SUB-29','SUB-30'], minus:[] },
-  { id:'GRP-02', name:'PAINT',       sum:['SUB-09','SUB-10','SUB-11','SUB-12','SUB-38'], minus:['AC-02','CT-ED','CHIL-AS3','CHIL-AS4','CT-AS','CHIL-AS12'] },
-  { id:'GRP-03', name:'LA',          sum:['SUB-21','SUB-22'], minus:[] },
-  { id:'GRP-04', name:'UA',          sum:['SUB-05'], minus:[] },
-  { id:'GRP-05', name:'PT7,8',       sum:['SUB-02','SUB-03','SUB-04'], minus:[] },
-  { id:'GRP-06', name:'FRAME',       sum:['SUB-33','SUB-34','SUB-36','SUB-37'], minus:[] },
-  { id:'GRP-07', name:'OFFICE',      sum:['SUB-31'], minus:[] },
-  { id:'GRP-08', name:'FR',          sum:['SUB-08'], minus:['CT-AC','CT-ED','WWT-01','RO-01','RO-02','DI-01'] },
-  { id:'GRP-09', name:'OLD CANTEEN', sum:['CANT-10'], minus:[] },
-  { id:'GRP-10', name:'AIR COMP',    sum:['SUB-06','SUB-07','AC-02'], minus:[] }
+
+/* ───────── นิยามคอลัมน์รายงาน (group หลัก 9) ───────── */
+const REPORT_MAIN = [
+  { key:'BODY',        name:'BODY',        ids:['SUB-15','SUB-18','SUB-19','SUB-20','SUB-24','SUB-27','SUB-28','SUB-29','SUB-30'] },
+  { key:'PAINT',       name:'PAINT',       ids:['SUB-09','SUB-10','SUB-11','SUB-12','SUB-38'] },
+  { key:'LA',          name:'LA',          ids:['SUB-21','SUB-22'] },
+  { key:'UA',          name:'UA',          ids:['SUB-05'] },
+  { key:'PT7,8',       name:'PT7,8',       ids:['SUB-02','SUB-03','SUB-04'] },
+  { key:'FRAME',       name:'FRAME',       ids:['SUB-33','SUB-34','SUB-36','SUB-37'] },
+  { key:'OFFICE',      name:'OFFICE',      ids:['SUB-31'] },
+  { key:'FR',          name:'FR',          ids:['SUB-08'] },
+  { key:'OLD CANTEEN', name:'OLD CANTEEN', ids:['CANT-10'] }
 ];
-/* ───────── หมวดตามชนิดโหลด (เรียงตามลำดับที่จะแสดง) ───────── */
+/* utility แยกย่อย (AC → Boiler) */
+const REPORT_UTIL = [
+  { key:'AIR COMP',    name:'AIR COMP',       ids:['SUB-06','SUB-07','AC-02'] },
+  { key:'COOLING A/C', name:'COOLING A/C',    ids:['CT-AC'] },
+  { key:'ED CHILLER',  name:'ED CHILLER',     ids:['EDCPS'] },
+  { key:'COOLING ED',  name:'COOLING ED',     ids:['CT-ED'] },
+  { key:'AS NEW',      name:'A/S Daikin New', ids:['CHIL-AS3','CHIL-AS4'] },
+  { key:'COOLING AS',  name:'Cooling A/S',    ids:['CT-AS'] },
+  { key:'AS OLD',      name:'A/S Daikin Old', ids:['CHIL-AS12'] },
+  { key:'WWT',         name:'WWT',            ids:['WWT-01'] },
+  { key:'RO',          name:'RO 1+2',         ids:['RO-01','RO-02'] },
+  { key:'DI',          name:'DI',             ids:['DI-01'] },
+  { key:'BOILER',      name:'BOILER',         ids:['BOIL-PS'] }
+];
+
+/* ───────── หมวดตามชนิดโหลด (หน้าเลือกตู้) ───────── */
 const LOAD_CATEGORIES = [
   { name:'Substation',  icon:'🏭', match: id => id.startsWith('SUB-') },
   { name:'A/C',         icon:'❄️', ids:['AC-02','AC-03','AC-05','AC-06','AC-07','AC-08','CTRLAC'] },
@@ -754,24 +774,18 @@ const LOAD_CATEGORIES = [
   { name:'Battery',     icon:'🔋', ids:['BAT-01','BAT-02','BATCHG'] },
   { name:'อื่นๆ',        icon:'📦', ids:['CKD-AD','SKID-01','SEPTIC','SEPTIC-N'] }
 ];
- 
-// คืนหมวดของตู้ตาม id
 function getCategoryOf(subId){
   for(const cat of LOAD_CATEGORIES){
     if(cat.match && cat.match(subId)) return cat.name;
     if(cat.ids && cat.ids.includes(subId)) return cat.name;
   }
-  return 'อื่นๆ'; // ตู้ที่ไม่เข้าหมวดไหน ตกมาที่นี่
-}   
- 
-let summaryRaw      = [];   // จาก server
-let summaryExpanded = {};
-let summaryComputed = null; // เก็บไว้ export
-   
+  return 'อื่นๆ';
+}
+
 /* ───────── CONFIG ───────── */
 const API_URL     = 'https://script.google.com/macros/s/AKfycbxInYN58Dt2UudDir9XH1iDLdAvUEeGXnr8PCRP59kr6AndnhQM_LQvgSCnBHjgt4Qn/exec';
 const QR_BASE_URL = 'https://ramesimct.github.io/Substation-V2/';
-const ABNORMAL_MULTIPLIER = 5; // เตือนถ้าใช้เกิน 5 เท่าของค่าเฉลี่ย
+const ABNORMAL_MULTIPLIER = 5;
 
 /* ───────── STATE ───────── */
 let subs                   = jLoad('subs')     || [];
@@ -787,16 +801,17 @@ let editSubIndex           = null;
 let isConnected            = false;
 let currentEditingRecordId = null;
 let currentUser            = '';
+let reportRaw              = [];
+let reportComputed         = null;
+let compareMode            = 'day';
 
 /* ───────── UTILITIES ───────── */
 function jLoad(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
-
 function persist(){
   localStorage.setItem('subs',     JSON.stringify(subs));
   localStorage.setItem('records',  JSON.stringify(records));
   localStorage.setItem('calendar', JSON.stringify(workCalendar));
 }
-
 function fmtDate(d){
   if(!d) return '—';
   let obj;
@@ -805,23 +820,19 @@ function fmtDate(d){
   if(isNaN(obj.getTime())) return String(d);
   return `${String(obj.getDate()).padStart(2,'0')}/${String(obj.getMonth()+1).padStart(2,'0')}/${obj.getFullYear()}`;
 }
-
 function fmtTime(t){
   if(!t) return '—';
   if(String(t).includes('T')){
     const obj = new Date(t);
-    if(!isNaN(obj.getTime()))
-      return `${String(obj.getHours()).padStart(2,'0')}:${String(obj.getMinutes()).padStart(2,'0')}`;
+    if(!isNaN(obj.getTime())) return `${String(obj.getHours()).padStart(2,'0')}:${String(obj.getMinutes()).padStart(2,'0')}`;
   }
   return String(t).slice(0,5) || '—';
 }
-
 function fmtNum(val, subId){
   const sub = subs.find(s => s.id === subId);
   const dec = sub && sub.decimal !== undefined ? sub.decimal : 0;
   return parseFloat(val || 0).toFixed(dec);
 }
-
 function fmtChartDate(dateStr){
   if(!dateStr) return '—';
   let obj;
@@ -830,7 +841,6 @@ function fmtChartDate(dateStr){
   if(isNaN(obj.getTime())) return String(dateStr);
   return `${String(obj.getDate()).padStart(2,'0')}/${String(obj.getMonth()+1).padStart(2,'0')}`;
 }
-
 function setNow(){
   const n  = new Date();
   const ed = document.getElementById('in-date');
@@ -838,38 +848,28 @@ function setNow(){
   if(ed) ed.value = n.toISOString().split('T')[0];
   if(et) et.value = n.toTimeString().slice(0,5);
 }
-
 function getLastKwh(subId){
-  const sorted = records
-    .filter(r => r.subId === subId)
+  const sorted = records.filter(r => r.subId === subId)
     .sort((a,b) => (`${b.date} ${b.time||'00:00'}`).localeCompare(`${a.date} ${a.time||'00:00'}`));
   return sorted.length ? parseFloat(sorted[0].kwh) || 0 : null;
 }
-
 function getSubRecs(subId){
-  return records
-    .filter(r => r.subId === subId)
+  return records.filter(r => r.subId === subId)
     .sort((a,b) => (`${a.date} ${a.time||'00:00'}`).localeCompare(`${b.date} ${b.time||'00:00'}`));
 }
 
-/* ════════════════════════════════════════════════════════════
-   LOGIN — 2 ทาง
-   ════════════════════════════════════════════════════════════ */
-// ── ออกจากระบบ / กลับไปหน้าเลือกโหมด ──
+/* ════════════ LOGIN ════════════ */
 function logout(){
   if(!confirm('ออกจากระบบและกลับไปหน้าเลือกโหมด?')) return;
   localStorage.removeItem('loginMode');
   currentUser = '';
-  // รีเซ็ตหน้า login กลับไปขั้นเลือกโหมด
   document.getElementById('login-admin').style.display  = 'none';
   document.getElementById('login-choose').style.display = 'block';
   document.getElementById('login-err').style.display    = 'none';
-  // แสดง login gate อีกครั้ง
   const gate = document.getElementById('login-gate');
   gate.style.display = 'flex';
   gate.style.opacity = '1';
 }
-   
 function enterBasic(){
   currentUser = '';
   applyAppMode('basic');
@@ -877,62 +877,45 @@ function enterBasic(){
   closeLoginGate();
   renderAll();
 }
-
 function showAdminLogin(){
   document.getElementById('login-choose').style.display = 'none';
   document.getElementById('login-admin').style.display  = 'block';
   setTimeout(() => document.getElementById('login-user')?.focus(), 100);
 }
-
 function backToChoose(){
   document.getElementById('login-admin').style.display  = 'none';
   document.getElementById('login-choose').style.display = 'block';
   document.getElementById('login-err').style.display    = 'none';
 }
-
 async function handleLogin(){
   const userVal  = document.getElementById('login-user').value.trim();
   const passVal  = document.getElementById('login-pass').value.trim();
   const errDiv   = document.getElementById('login-err');
   const loginBtn = document.getElementById('login-btn');
-
   if(!userVal || !passVal){
-    errDiv.style.display = 'block';
-    errDiv.innerText = '⚠️ กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
-    return;
+    errDiv.style.display = 'block'; errDiv.innerText = '⚠️ กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'; return;
   }
-
   errDiv.style.display = 'none';
   const originalHTML = loginBtn.innerHTML;
-  loginBtn.disabled  = true;
-  loginBtn.innerHTML = '⏳ กำลังตรวจสอบ...';
-
+  loginBtn.disabled  = true; loginBtn.innerHTML = '⏳ กำลังตรวจสอบ...';
   try{
     const res = await apiPost({ action:'login', username:userVal, password:passVal });
     if(res && res.success && res.role === 'admin'){
       currentUser = res.name || userVal;
       applyAppMode('admin');
       localStorage.removeItem('loginMode');
-      closeLoginGate();
-      renderAll();
+      closeLoginGate(); renderAll();
     } else if(res && res.success){
-      errDiv.style.display = 'block';
-      errDiv.innerText = '⚠️ บัญชีนี้ไม่มีสิทธิ์แอดมิน';
-      shakeInputs();
+      errDiv.style.display = 'block'; errDiv.innerText = '⚠️ บัญชีนี้ไม่มีสิทธิ์แอดมิน'; shakeInputs();
     } else {
-      errDiv.style.display = 'block';
-      errDiv.innerText = '❌ ' + (res?.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-      shakeInputs();
+      errDiv.style.display = 'block'; errDiv.innerText = '❌ ' + (res?.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); shakeInputs();
     }
   }catch(e){
-    errDiv.style.display = 'block';
-    errDiv.innerText = '❌ เชื่อมต่อ Server ไม่ได้';
+    errDiv.style.display = 'block'; errDiv.innerText = '❌ เชื่อมต่อ Server ไม่ได้';
   }finally{
-    loginBtn.disabled  = false;
-    loginBtn.innerHTML = originalHTML;
+    loginBtn.disabled = false; loginBtn.innerHTML = originalHTML;
   }
 }
-
 function shakeInputs(){
   ['login-user','login-pass'].forEach(id => {
     const el = document.getElementById(id);
@@ -941,29 +924,23 @@ function shakeInputs(){
     setTimeout(() => { el.style.animation = ''; }, 400);
   });
 }
-
 function closeLoginGate(){
   const gate = document.getElementById('login-gate');
   gate.style.transition = 'opacity 0.3s';
   gate.style.opacity = '0';
   setTimeout(() => { gate.style.display = 'none'; gate.style.opacity = '1'; }, 300);
 }
-
 function applyAppMode(mode){
   appMode = mode;
   const tabsBar = document.getElementById('tabs-bar');
   if(tabsBar) tabsBar.className = mode === 'admin' ? 'tabs admin-mode' : 'tabs basic-mode';
   const hdrSmall = document.getElementById('hdr-small');
-  if(hdrSmall) hdrSmall.textContent = mode === 'admin'
-    ? `👑 แอดมิน: ${currentUser}`
-    : '📝 โหมดบันทึก';
+  if(hdrSmall) hdrSmall.textContent = mode === 'admin' ? `👑 แอดมิน: ${currentUser}` : '📝 โหมดบันทึก';
 }
 
-/* ════════════════════════════════════════════════════════════
-   THEME
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ THEME ════════════ */
 function initTheme(){
-  const saved      = localStorage.getItem('theme');
+  const saved = localStorage.getItem('theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   setTheme(saved || (prefersDark ? 'dark' : 'light'));
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
@@ -977,13 +954,10 @@ function setTheme(t){
 function toggleTheme(){
   const cur = document.documentElement.getAttribute('data-theme');
   const nxt = cur === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('theme', nxt);
-  setTheme(nxt);
+  localStorage.setItem('theme', nxt); setTheme(nxt);
 }
 
-/* ════════════════════════════════════════════════════════════
-   API
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ API ════════════ */
 async function apiPost(body, retries = 2){
   for(let attempt = 0; attempt <= retries; attempt++){
     const ctrl = new AbortController();
@@ -1002,7 +976,6 @@ async function apiPost(body, retries = 2){
     }
   }
 }
-
 function setSyncStatus(status, msg){
   const dot = document.getElementById('sync-dot');
   const ban = document.getElementById('sync-banner');
@@ -1019,7 +992,6 @@ function setSyncStatus(status, msg){
     setTimeout(() => { ban.className = 'sync-banner'; }, 2500);
   }
 }
-
 function loadFromServer(){
   fetch(API_URL)
     .then(res => { if(!res.ok) throw new Error('Network error'); return res.json(); })
@@ -1028,17 +1000,11 @@ function loadFromServer(){
       if(data.subs     && Array.isArray(data.subs))     subs         = data.subs;
       if(data.records  && Array.isArray(data.records))  records      = computeUsed(data.records);
       if(data.calendar && Array.isArray(data.calendar)) workCalendar = data.calendar;
-      persist();
-      isConnected = true;
-      renderAll();
+      persist(); isConnected = true; renderAll();
       console.log(`✅ Sync — ${subs.length} subs, ${records.length} records, ${workCalendar.length} cal`);
     })
-    .catch(err => {
-      console.warn('⚠️ โหลด Server ไม่ได้ ใช้ Cache:', err.message);
-      isConnected = false;
-    });
+    .catch(err => { console.warn('⚠️ โหลด Server ไม่ได้ ใช้ Cache:', err.message); isConnected = false; });
 }
-
 async function testConn(){
   setSyncStatus('busy','กำลังทดสอบ...');
   const box = document.getElementById('api-status');
@@ -1056,60 +1022,34 @@ async function testConn(){
   }
 }
 
-/* ════════════════════════════════════════════════════════════
-   COMPUTE USED — คำนวณตอนแสดงผล (ไม่เก็บใน sheet)
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ COMPUTE USED ════════════ */
 function computeUsed(rawRecords){
-  rawRecords.forEach(r => {
-    if(r.date && String(r.date).includes('T')){
-      r.date = String(r.date).slice(0, 10);
-    }
-  });
-
+  rawRecords.forEach(r => { if(r.date && String(r.date).includes('T')) r.date = String(r.date).slice(0, 10); });
   const groups = {};
   rawRecords.forEach(r => { if(!groups[r.subId]) groups[r.subId]=[]; groups[r.subId].push(r); });
-
   Object.keys(groups).forEach(subId => {
     const sub        = subs.find(s => s.id === subId);
     const multiplier = sub?.multiplier !== undefined ? parseFloat(sub.multiplier) : 1;
-    const chain = groups[subId].sort((a,b) =>
-      (`${a.date} ${a.time||'00:00'}`).localeCompare(`${b.date} ${b.time||'00:00'}`)
-    );
+    const chain = groups[subId].sort((a,b) => (`${a.date} ${a.time||'00:00'}`).localeCompare(`${b.date} ${b.time||'00:00'}`));
     chain.forEach((rec, i) => {
-      if(i === chain.length - 1){
-        rec.used = 0;
-      } else {
-        const diff = parseFloat(chain[i+1].kwh) - parseFloat(rec.kwh);
-        rec.used = Math.max(0, diff) * multiplier;
-      }
+      if(i === chain.length - 1){ rec.used = 0; }
+      else { const diff = parseFloat(chain[i+1].kwh) - parseFloat(rec.kwh); rec.used = Math.max(0, diff) * multiplier; }
     });
   });
-
   return Object.values(groups).flat();
 }
 
-/* ════════════════════════════════════════════════════════════
-   INIT
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ INIT ════════════ */
 function init(){
   subs = subs.map(s => ({ ...s, decimal: s.decimal !== undefined ? s.decimal : 0 }));
-  initTheme();
-  setNow();
-
-  if(localStorage.getItem('loginMode') === 'basic'){
-    applyAppMode('basic');
-    closeLoginGate();
-  }
-
+  initTheme(); setNow();
+  if(localStorage.getItem('loginMode') === 'basic'){ applyAppMode('basic'); closeLoginGate(); }
   renderAll();
   document.getElementById('qr-url-preview').textContent = QR_BASE_URL + '?sub=SUB-XX';
-
   const p = new URLSearchParams(location.search).get('sub');
   if(p){
     if(document.getElementById('login-gate').style.display !== 'none'){
-      applyAppMode('basic');
-      localStorage.setItem('loginMode','basic');
-      closeLoginGate();
+      applyAppMode('basic'); localStorage.setItem('loginMode','basic'); closeLoginGate();
     }
     goTab('entry');
     setTimeout(() => {
@@ -1118,22 +1058,14 @@ function init(){
       else toast('ไม่พบ Sub: ' + p,'err');
     }, 300);
   }
-
   loadFromServer();
 }
-
 function renderAll(){
-  renderZoneAreas();
-  renderData();
-  renderStats();
-  populateDDs();
-  updateBadge();
+  renderZoneAreas(); renderData(); renderStats(); populateDDs(); updateBadge();
   if(activeSub){ updateMeterSummary(); renderRecent(); }
 }
 
-/* ════════════════════════════════════════════════════════════
-   TABS
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ TABS ════════════ */
 const TAB_ORDER = ['entry','data','chart','summary','qr','settings'];
 function goTab(name){
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -1142,296 +1074,282 @@ function goTab(name){
   const idx   = TAB_ORDER.indexOf(name);
   const tabEl = document.querySelectorAll('.tab')[idx];
   if(tabEl) tabEl.classList.add('active');
- 
   if(name === 'data')     { renderData(); renderStats(); }
   if(name === 'chart')    { populateDDs(); setChartRange(30); renderAllChart(); }
-  if(name === 'summary')  { setSumRange('month',3); }
+  if(name === 'summary')  { buildMonthOptions(); buildCompareGroupOptions(); loadReport(); }
   if(name === 'qr')       { renderQR(); }
   if(name === 'settings') { renderSubList(); renderCalendarList(); }
 }
+
 /* ════════════════════════════════════════════════════════════
-   DATE RANGE PRESETS
+   หน้าสรุป — รายงานรายวันทั้งเดือน
    ════════════════════════════════════════════════════════════ */
-function setSumRange(type, months){
-  const now   = new Date();
-  const toVal = now.toISOString().split('T')[0];
-  let fromVal;
-  if(type === 'month'){
-    const from = new Date(now);
-    from.setMonth(from.getMonth() - months + 1);
-    from.setDate(1);
-    fromVal = from.toISOString().split('T')[0];
-  } else if(type === 'year'){
-    fromVal = `${now.getFullYear()}-01-01`;
-  } else {
-    fromVal = '';
-  }
-  document.getElementById('sum-from').value = fromVal;
-  document.getElementById('sum-to').value   = toVal;
-  loadSummary();
+function buildMonthOptions(){
+  const months = [...new Set(records.map(r => String(r.date).slice(0,7)))].filter(Boolean).sort().reverse();
+  const sel = document.getElementById('rep-month');
+  if(!sel) return;
+  const MN = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  sel.innerHTML = months.map(m => { const [y,mm]=m.split('-'); return `<option value="${m}">${MN[parseInt(mm)]} ${y}</option>`; }).join('');
 }
- 
-function getGranularity(fromVal, toVal){
-  if(!fromVal) return 'month';
-  const from = new Date(fromVal);
-  const to   = toVal ? new Date(toVal) : new Date();
-  const days = Math.ceil((to - from) / 864e5);
-  if(days <= 31) return 'day';
-  if(days <= 90) return 'week';
-  return 'month';
-}
- 
-function granLabel(g){ return {day:'รายวัน',week:'รายสัปดาห์',month:'รายเดือน'}[g] || 'รายเดือน'; }
- 
-function fmtPeriod(period, gran){
-  if(gran === 'day'){
-    const [y,m,d] = period.split('-');
-    return `${parseInt(d)}/${parseInt(m)}`;
-  }
-  if(gran === 'week') return period.split('-')[1];
-  const MONTHS = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  const [y,m] = period.split('-');
-  return `${MONTHS[parseInt(m)]}${String(y).slice(2)}`;
-}
- 
-/* ════════════════════════════════════════════════════════════
-   LOAD SUMMARY
-   ════════════════════════════════════════════════════════════ */
-async function loadSummary(){
-  const fromVal = document.getElementById('sum-from').value;
-  const toVal   = document.getElementById('sum-to').value;
-  const gran    = getGranularity(fromVal, toVal);
- 
-  document.getElementById('sum-gran-label').textContent =
-    `📊 แสดงแบบ: ${granLabel(gran)}` + (fromVal ? ` | ${fromVal} — ${toVal||'ปัจจุบัน'}` : ' | ทั้งหมด');
- 
-  document.getElementById('summary-area').innerHTML = '<div class="section-empty">⏳ กำลังโหลด...</div>';
- 
+
+async function loadReport(){
+  const month = document.getElementById('rep-month')?.value;
+  if(!month){ document.getElementById('report-area').innerHTML = '<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
+  const [y,m] = month.split('-');
+  const dateFrom = `${month}-01`;
+  const lastDay  = new Date(parseInt(y), parseInt(m), 0).getDate();
+  const dateTo   = `${month}-${String(lastDay).padStart(2,'0')}`;
+  document.getElementById('report-area').innerHTML = '<div class="section-empty">⏳ กำลังโหลด...</div>';
   try{
-    const res = await apiPost({ action:'getMonthlySummary', dateFrom:fromVal||null, dateTo:toVal||null, granularity:gran });
+    const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity:'day' });
     if(!res || !res.success) throw new Error(res?.error || 'Server error');
-    summaryRaw = res.summary || [];
-    renderSummary(gran);
+    reportRaw = res.summary || [];
+    renderReport(month, lastDay);
   }catch(e){
-    document.getElementById('summary-area').innerHTML = `<div class="warn-box">❌ โหลดไม่ได้: ${e.message}</div>`;
+    document.getElementById('report-area').innerHTML = `<div class="warn-box">❌ ${e.message}</div>`;
   }
 }
- 
-/* ════════════════════════════════════════════════════════════
-   CALCULATE GROUP — used = ค่าแรก period ถัดไป − ค่าแรก period นี้
-   เดือนสุดท้าย (ไม่มี period ถัดไป) = lastKwh − firstKwh ของเดือนนั้น
-   ════════════════════════════════════════════════════════════ */
-function calcGroups(){
-  // map: { subId: { period: {firstKwh, lastKwh} } }
-  const meterMap = {};
-  summaryRaw.forEach(r => {
-    if(!meterMap[r.subId]) meterMap[r.subId] = {};
-    meterMap[r.subId][r.period] = { firstKwh:r.firstKwh, lastKwh:r.lastKwh };
-  });
- 
-  const periods = [...new Set(summaryRaw.map(r => r.period))].sort();
- 
-  // used ของ meter แต่ละตัวต่อ period
-  function meterUsed(subId, period, periodIdx){
-    const cur = meterMap[subId]?.[period];
-    if(!cur) return 0;
-    const sub  = subs.find(s => s.id === subId);
-    const mult = sub?.multiplier !== undefined ? parseFloat(sub.multiplier) : 1;
- 
-    // หา period ถัดไปที่ตู้นี้มีข้อมูล
-    for(let k = periodIdx + 1; k < periods.length; k++){
-      const next = meterMap[subId]?.[periods[k]];
-      if(next){
-        return Math.max(0, next.firstKwh - cur.firstKwh) * mult;
-      }
-    }
-    // ไม่มี period ถัดไป → ใช้ last − first ของ period นี้เอง (เดือนปัจจุบัน)
-    return Math.max(0, cur.lastKwh - cur.firstKwh) * mult;
-  }
- 
-  const groups = GROUP_CONFIG.map(grp => {
-    const periodTotals = {};
-    periods.forEach((p, pIdx) => {
-      const sumV   = grp.sum.reduce((a,id)   => a + meterUsed(id, p, pIdx), 0);
-      const minusV = grp.minus.reduce((a,id) => a + meterUsed(id, p, pIdx), 0);
-      periodTotals[p] = sumV - minusV;
-    });
- 
-    const meterDetails = [
-      ...grp.sum.map(id => ({ id, type:'sum',
-        name: subs.find(s=>s.id===id)?.name || id,
-        pt: Object.fromEntries(periods.map((p,pi) => [p, meterUsed(id,p,pi)])) })),
-      ...grp.minus.map(id => ({ id, type:'minus',
-        name: subs.find(s=>s.id===id)?.name || id,
-        pt: Object.fromEntries(periods.map((p,pi) => [p, meterUsed(id,p,pi)])) }))
-    ];
- 
-    const grandTotal = Object.values(periodTotals).reduce((a,v)=>a+v,0);
-    return { ...grp, periodTotals, meterDetails, grandTotal };
-  });
- 
-  const overallByPeriod = {};
-  periods.forEach(p => { overallByPeriod[p] = groups.reduce((a,g) => a + (g.periodTotals[p]||0), 0); });
-  const overallTotal = groups.reduce((a,g) => a + g.grandTotal, 0);
- 
-  // ✅ validate config — meter ใน group ที่ไม่มีในระบบ
-  const allIds = new Set(subs.map(s => s.id));
-  const missing = [];
-  GROUP_CONFIG.forEach(g => {
-    [...g.sum, ...g.minus].forEach(id => { if(!allIds.has(id)) missing.push(`${g.name}: ${id}`); });
-  });
- 
-  return { groups, periods, overallByPeriod, overallTotal, missing };
+
+function buildMeterDayMap(){
+  const m = {};
+  reportRaw.forEach(r => { if(!m[r.subId]) m[r.subId]={}; m[r.subId][r.period]={firstKwh:r.firstKwh,lastKwh:r.lastKwh}; });
+  return m;
 }
- 
-/* ════════════════════════════════════════════════════════════
-   RENDER SUMMARY TABLE
-   ════════════════════════════════════════════════════════════ */
-function renderSummary(gran){
-  const area = document.getElementById('summary-area');
-  if(!summaryRaw.length){ area.innerHTML = '<div class="section-empty">📭 ไม่มีข้อมูลในช่วงที่เลือก</div>'; return; }
- 
-  const data = calcGroups();
-  summaryComputed = { ...data, gran };
-  const { groups, periods, overallByPeriod, overallTotal, missing } = data;
- 
-  const periodHeaders = periods.map(p =>
-    `<th style="min-width:72px;text-align:right;padding:6px 8px">${fmtPeriod(p, gran)}</th>`).join('');
- 
-  const groupRows = groups.map(grp => {
-    const isExp  = summaryExpanded[grp.id];
-    const toggle = isExp ? '▼' : '▶';
-    const main = `<tr onclick="toggleSumGroup('${grp.id}')" style="cursor:pointer">
-      <td style="padding:8px 10px;font-weight:600">
-        <span style="color:var(--accent);margin-right:5px">${toggle}</span>${grp.name}
-      </td>
-      ${periods.map(p => {
-        const v = grp.periodTotals[p]||0;
-        return `<td style="text-align:right;padding:6px 8px;font-weight:600;color:${v<0?'var(--red)':'var(--text-1)'}">${Math.round(v).toLocaleString()}</td>`;
-      }).join('')}
-      <td style="text-align:right;padding:6px 8px;font-weight:700;color:${grp.grandTotal<0?'var(--red)':'var(--accent)'}">${Math.round(grp.grandTotal).toLocaleString()}</td>
+function meterUsedOnDay(meterMap, subId, dateStr, allDates){
+  const cur = meterMap[subId]?.[dateStr];
+  if(!cur) return null;
+  const sub  = subs.find(s => s.id === subId);
+  const mult = sub?.multiplier !== undefined ? parseFloat(sub.multiplier) : 1;
+  const idx = allDates.indexOf(dateStr);
+  for(let k = idx+1; k < allDates.length; k++){
+    const next = meterMap[subId]?.[allDates[k]];
+    if(next) return Math.max(0, next.firstKwh - cur.firstKwh) * mult;
+  }
+  return Math.max(0, cur.lastKwh - cur.firstKwh) * mult;
+}
+function sumGroupOnDay(meterMap, ids, dateStr, allDates){
+  let total = 0, hasAny = false;
+  ids.forEach(id => { const u = meterUsedOnDay(meterMap, id, dateStr, allDates); if(u !== null){ total += u; hasAny = true; } });
+  return hasAny ? total : null;
+}
+
+function renderReport(month, lastDay){
+  const area = document.getElementById('report-area');
+  if(!reportRaw.length){ area.innerHTML = '<div class="section-empty">📭 ไม่มีข้อมูลเดือนนี้</div>'; return; }
+  const meterMap = buildMeterDayMap();
+  const allDates = [...new Set(reportRaw.map(r => r.period))].sort();
+  const days = [];
+  for(let d = 1; d <= lastDay; d++) days.push(`${month}-${String(d).padStart(2,'0')}`);
+
+  const rows = days.map(dateStr => {
+    const cells = {};
+    REPORT_MAIN.forEach(c => cells[c.key] = sumGroupOnDay(meterMap, c.ids, dateStr, allDates));
+    REPORT_UTIL.forEach(c => cells[c.key] = sumGroupOnDay(meterMap, c.ids, dateStr, allDates));
+    let utilTotal = 0, utilHas = false;
+    REPORT_UTIL.forEach(c => { if(cells[c.key] !== null){ utilTotal += cells[c.key]; utilHas = true; } });
+    cells['UTILITY'] = utilHas ? utilTotal : null;
+    let mainTotal = 0, mainHas = false;
+    REPORT_MAIN.forEach(c => { if(cells[c.key] !== null){ mainTotal += cells[c.key]; mainHas = true; } });
+    cells['TOTAL'] = (mainHas || utilHas) ? (mainTotal + utilTotal) : null;
+    return { dateStr, cells };
+  });
+
+  const totals = {};
+  [...REPORT_MAIN.map(c=>c.key), ...REPORT_UTIL.map(c=>c.key), 'UTILITY','TOTAL'].forEach(k => {
+    totals[k] = rows.reduce((a,r) => a + (r.cells[k]||0), 0);
+  });
+  reportComputed = { month, rows, totals };
+
+  const fmtCell = v => v === null ? '<span style="color:var(--text-3)">—</span>' : Math.round(v).toLocaleString();
+  const MN = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const [yy,mm] = month.split('-');
+  const headMain = REPORT_MAIN.map(c => `<th style="text-align:right;padding:6px 8px;min-width:64px">${c.name}</th>`).join('');
+  const headUtil = REPORT_UTIL.map(c => `<th style="text-align:right;padding:6px 8px;min-width:64px;color:var(--purple)">${c.name}</th>`).join('');
+
+  const bodyRows = rows.map(r => {
+    const dnum = parseInt(r.dateStr.split('-')[2]);
+    const mainCells = REPORT_MAIN.map(c => `<td style="text-align:right;padding:5px 8px">${fmtCell(r.cells[c.key])}</td>`).join('');
+    const utilCells = REPORT_UTIL.map(c => `<td style="text-align:right;padding:5px 8px;color:var(--text-2)">${fmtCell(r.cells[c.key])}</td>`).join('');
+    return `<tr>
+      <td style="padding:5px 8px;font-weight:600;color:var(--accent);position:sticky;left:0;background:var(--surface-1)">${dnum}/${parseInt(mm)}</td>
+      ${mainCells}
+      <td style="text-align:right;padding:5px 8px;font-weight:700;color:var(--green);background:var(--green-dim)">${fmtCell(r.cells['UTILITY'])}</td>
+      ${utilCells}
+      <td style="text-align:right;padding:5px 8px;font-weight:700;color:var(--accent)">${fmtCell(r.cells['TOTAL'])}</td>
     </tr>`;
- 
-    const details = isExp ? grp.meterDetails.map(m => {
-      const isMinus = m.type === 'minus';
-      const col = isMinus ? 'var(--red)' : 'var(--text-2)';
-      return `<tr style="background:var(--surface-2);font-size:11px">
-        <td style="padding:4px 10px 4px 26px;color:${col}">${isMinus?'−':'+'} ${m.id} <span style="color:var(--text-3)">${m.name}</span></td>
-        ${periods.map(p => `<td style="text-align:right;padding:4px 8px;color:${col}">${Math.round(m.pt[p]||0).toLocaleString()}</td>`).join('')}
-        <td style="text-align:right;padding:4px 8px;color:${col}">${Math.round(Object.values(m.pt).reduce((a,v)=>a+v,0)).toLocaleString()}</td>
-      </tr>`;
-    }).join('') : '';
- 
-    return main + details;
   }).join('');
- 
-  const totalRow = `<tr style="background:var(--surface-3);border-top:2px solid var(--border);font-weight:700">
-    <td style="padding:9px 10px">รวมทั้งหมด</td>
-    ${periods.map(p => `<td style="text-align:right;padding:8px;color:var(--accent)">${Math.round(overallByPeriod[p]||0).toLocaleString()}</td>`).join('')}
-    <td style="text-align:right;padding:8px;color:var(--green)">${Math.round(overallTotal).toLocaleString()}</td>
-  </tr>`;
- 
-  const warnMissing = missing.length
-    ? `<div class="warn-box" style="margin-bottom:8px">⚠️ Meter ที่ตั้งใน Group แต่ไม่มีในระบบ: ${missing.join(', ')}</div>` : '';
- 
+
+  const totMain = REPORT_MAIN.map(c => `<td style="text-align:right;padding:7px 8px;font-weight:700">${Math.round(totals[c.key]).toLocaleString()}</td>`).join('');
+  const totUtil = REPORT_UTIL.map(c => `<td style="text-align:right;padding:7px 8px;font-weight:700;color:var(--purple)">${Math.round(totals[c.key]).toLocaleString()}</td>`).join('');
+
   area.innerHTML = `
-    ${warnMissing}
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px;text-align:center">รายละเอียดปริมาณการใช้ไฟฟ้าแต่ละ SUBSTATION · ${MN[parseInt(mm)]} ${yy}</div>
     <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap">
         <thead><tr style="background:var(--surface-3)">
-          <th style="text-align:left;padding:8px 10px;min-width:120px">กลุ่ม</th>
-          ${periodHeaders}
-          <th style="text-align:right;padding:8px;color:var(--accent)">รวม</th>
+          <th style="padding:6px 8px;position:sticky;left:0;background:var(--surface-3);text-align:left">วันที่</th>
+          ${headMain}
+          <th style="text-align:right;padding:6px 8px;color:var(--green)">UTILITY<br>PLANT</th>
+          ${headUtil}
+          <th style="text-align:right;padding:6px 8px;color:var(--accent)">TOTAL</th>
         </tr></thead>
-        <tbody>${groupRows}${totalRow}</tbody>
+        <tbody>${bodyRows}</tbody>
+        <tfoot><tr style="background:var(--surface-3);border-top:2px solid var(--border)">
+          <td style="padding:7px 8px;font-weight:700;position:sticky;left:0;background:var(--surface-3)">รวม</td>
+          ${totMain}
+          <td style="text-align:right;padding:7px 8px;font-weight:700;color:var(--green);background:var(--green-dim)">${Math.round(totals['UTILITY']).toLocaleString()}</td>
+          ${totUtil}
+          <td style="text-align:right;padding:7px 8px;font-weight:700;color:var(--accent)">${Math.round(totals['TOTAL']).toLocaleString()}</td>
+        </tr></tfoot>
       </table>
     </div>
-    <div style="margin-top:8px;font-size:10px;color:var(--text-3)">หน่วย: kWh · กด ▶ ดูรายละเอียด meter (+ บวก, − ลบ)</div>`;
+    <div style="margin-top:6px;font-size:10px;color:var(--text-3)">หน่วย: kWh · — = ไม่มีข้อมูล · UTILITY PLANT = รวม AC→Boiler · TOTAL = group หลัก + utility</div>`;
+  buildCompareGroupOptions();
 }
- 
-function toggleSumGroup(gid){
-  summaryExpanded[gid] = !summaryExpanded[gid];
-  const gran = getGranularity(document.getElementById('sum-from').value, document.getElementById('sum-to').value);
-  renderSummary(gran);
-}
- 
-/* ════════════════════════════════════════════════════════════
-   EXPORT SUMMARY → Excel
-   ════════════════════════════════════════════════════════════ */
-function exportSummaryExcel(){
-  if(!summaryComputed || !summaryComputed.groups.length) return toast('ยังไม่มีข้อมูลสรุป','err');
-  const { groups, periods, overallByPeriod, overallTotal, gran } = summaryComputed;
- 
-  const rows = [];
-  const header = { 'กลุ่ม':'' };
-  periods.forEach(p => header[fmtPeriod(p,gran)] = '');
-  header['รวม'] = '';
- 
-  groups.forEach(grp => {
-    const row = { 'กลุ่ม': grp.name };
-    periods.forEach(p => row[fmtPeriod(p,gran)] = Math.round(grp.periodTotals[p]||0));
-    row['รวม'] = Math.round(grp.grandTotal);
-    rows.push(row);
+
+function exportReportExcel(){
+  if(!reportComputed) return toast('ยังไม่มีข้อมูล','err');
+  const { month, rows, totals } = reportComputed;
+  const mm = parseInt(month.split('-')[1]);
+  const aoa = [];
+  const header = ['วันที่', ...REPORT_MAIN.map(c=>c.name), 'UTILITY PLANT', ...REPORT_UTIL.map(c=>c.name), 'TOTAL'];
+  aoa.push(header);
+  rows.forEach(r => {
+    const dnum = parseInt(r.dateStr.split('-')[2]);
+    const line = [`${dnum}/${mm}`];
+    REPORT_MAIN.forEach(c => line.push(r.cells[c.key]===null?'':Math.round(r.cells[c.key])));
+    line.push(r.cells['UTILITY']===null?'':Math.round(r.cells['UTILITY']));
+    REPORT_UTIL.forEach(c => line.push(r.cells[c.key]===null?'':Math.round(r.cells[c.key])));
+    line.push(r.cells['TOTAL']===null?'':Math.round(r.cells['TOTAL']));
+    aoa.push(line);
   });
-  const totalRow = { 'กลุ่ม':'รวมทั้งหมด' };
-  periods.forEach(p => totalRow[fmtPeriod(p,gran)] = Math.round(overallByPeriod[p]||0));
-  totalRow['รวม'] = Math.round(overallTotal);
-  rows.push(totalRow);
- 
+  const totLine = ['รวม'];
+  REPORT_MAIN.forEach(c => totLine.push(Math.round(totals[c.key])));
+  totLine.push(Math.round(totals['UTILITY']));
+  REPORT_UTIL.forEach(c => totLine.push(Math.round(totals[c.key])));
+  totLine.push(Math.round(totals['TOTAL']));
+  aoa.push(totLine);
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{wch:18}, ...periods.map(()=>({wch:12})), {wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws, 'Summary');
-  XLSX.writeFile(wb, `Summary_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('✅ Export สรุปแล้ว','ok');
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = header.map(()=>({wch:13}));
+  XLSX.utils.book_append_sheet(wb, ws, month);
+  XLSX.writeFile(wb, `Report_${month}.xlsx`);
+  toast('✅ Export รายงานแล้ว','ok');
 }
- 
-/* ════════════════════════════════════════════════════════════
-   WORK CALENDAR
-   ════════════════════════════════════════════════════════════ */
-// คืนประเภทวัน: 'work' | 'holiday'
+
+/* ════════════ กราฟเทียบต่อกลุ่ม ════════════ */
+function buildCompareGroupOptions(){
+  const sel = document.getElementById('cmp-group');
+  if(!sel) return;
+  const prev = sel.value;
+  const allCols = [...REPORT_MAIN, ...REPORT_UTIL];
+  sel.innerHTML = allCols.map(c => `<option value="${c.key}">${c.name}</option>`).join('')
+    + '<option value="__UTILITY__">UTILITY PLANT (รวม)</option>'
+    + '<option value="__TOTAL__">TOTAL</option>';
+  if(prev) sel.value = prev;
+}
+function setCompareMode(mode){
+  compareMode = mode;
+  document.querySelectorAll('.cmp-mode-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('cmp-'+mode);
+  if(btn) btn.classList.add('active');
+  renderCompareChart();
+}
+function getColIds(key){
+  if(key === '__UTILITY__') return REPORT_UTIL.flatMap(c => c.ids);
+  if(key === '__TOTAL__')   return [...REPORT_MAIN, ...REPORT_UTIL].flatMap(c => c.ids);
+  const col = [...REPORT_MAIN, ...REPORT_UTIL].find(c => c.key === key);
+  return col ? col.ids : [];
+}
+async function renderCompareChart(){
+  const groupKey = document.getElementById('cmp-group')?.value;
+  const area = document.getElementById('compare-area');
+  if(!groupKey){ area.innerHTML = '<div class="section-empty">เลือกกลุ่ม</div>'; return; }
+  const ids = getColIds(groupKey);
+  area.innerHTML = '<div class="section-empty">⏳ กำลังคำนวณ...</div>';
+  const gran = compareMode === 'day' ? 'day' : 'month';
+  let dateFrom = null, dateTo = null;
+  if(compareMode === 'day'){
+    const month = document.getElementById('rep-month')?.value;
+    if(month){ const [y,m]=month.split('-'); dateFrom=`${month}-01`; dateTo=`${month}-${String(new Date(parseInt(y),parseInt(m),0).getDate()).padStart(2,'0')}`; }
+  }
+  try{
+    const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity:gran });
+    if(!res || !res.success) throw new Error(res?.error||'error');
+    const raw = res.summary || [];
+    const meterMap = {};
+    raw.forEach(r => { if(!meterMap[r.subId]) meterMap[r.subId]={}; meterMap[r.subId][r.period]={firstKwh:r.firstKwh,lastKwh:r.lastKwh}; });
+    const allPeriods = [...new Set(raw.map(r => r.period))].sort();
+    if(compareMode === 'year'){
+      const byYear = {};
+      allPeriods.forEach(p => { ids.forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null) byYear[p.slice(0,4)] = (byYear[p.slice(0,4)]||0) + u; }); });
+      drawCompareBars(Object.entries(byYear).map(([k,v])=>({label:k,value:v})), 'ปี'); return;
+    }
+    const dataPoints = allPeriods.map(p => {
+      let total = 0, has = false;
+      ids.forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null){ total += u; has = true; } });
+      let label;
+      if(compareMode === 'day'){ label = parseInt(p.split('-')[2])+'/'+parseInt(p.split('-')[1]); }
+      else { const MN=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; label = MN[parseInt(p.split('-')[1])]+p.slice(2,4); }
+      return { label, value: has ? total : 0 };
+    });
+    drawCompareBars(dataPoints, compareMode==='day'?'วัน':'เดือน');
+  }catch(e){ area.innerHTML = `<div class="warn-box">❌ ${e.message}</div>`; }
+}
+function drawCompareBars(points, unit){
+  const area = document.getElementById('compare-area');
+  if(!points.length){ area.innerHTML = '<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
+  const maxVal = Math.max(...points.map(p => p.value), 1);
+  const CHART_H = 160;
+  const fitScreen = points.length <= 16;
+  const bars = points.map(p => {
+    const barH = Math.max(3, Math.round(Math.max(0,p.value)/maxVal*CHART_H));
+    const valStr = Math.round(p.value).toLocaleString();
+    const colStyle = fitScreen ? 'flex:1;min-width:0' : 'min-width:46px';
+    return `<div class="vbar-col" style="${colStyle}" title="${p.label} — ${valStr} kWh">
+      <div class="vbar-val" style="font-size:${fitScreen?'8px':'9px'}">${valStr}</div>
+      <div class="vbar-space"><div class="vbar-bar" style="height:${barH}px"></div></div>
+      <div class="vbar-label">${p.label}</div>
+    </div>`;
+  }).join('');
+  const total = points.reduce((a,p)=>a+p.value,0);
+  const avg = points.length ? total/points.length : 0;
+  const chartStyle = fitScreen ? 'min-width:100%' : 'min-width:max-content';
+  area.innerHTML = `
+    <div class="vbar-scroll"><div class="vbar-chart" style="${chartStyle}">${bars}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="chip chip-green">⚡ รวม ${Math.round(total).toLocaleString()} kWh</span>
+      <span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">📊 เฉลี่ย ${Math.round(avg).toLocaleString()} kWh/${unit}</span>
+    </div>`;
+}
+
+/* ════════════ WORK CALENDAR ════════════ */
 function getDayType(dateStr){
   const found = workCalendar.find(c => c.date === dateStr);
   if(found) return found.type;
-  // ✅ parse แบบ local ไม่ให้ timezone เลื่อนวัน
   const [y,m,d] = String(dateStr).split('-').map(Number);
   const dow = new Date(y, m-1, d).getDay();
   return (dow === 0 || dow === 6) ? 'holiday' : 'work';
 }
- 
-function getDayNote(dateStr){
-  return workCalendar.find(c => c.date === dateStr)?.note || '';
-}
- 
+function getDayNote(dateStr){ return workCalendar.find(c => c.date === dateStr)?.note || ''; }
 async function addCalendarDay(){
   const date = document.getElementById('cal-date').value;
   const type = document.getElementById('cal-type').value;
   const note = document.getElementById('cal-note').value.trim();
   if(!date) return toast('เลือกวันที่ด้วย','err');
- 
-  // อัปเดต local ทันที
   const idx = workCalendar.findIndex(c => c.date === date);
-  if(idx >= 0) workCalendar[idx] = { date, type, note };
-  else workCalendar.push({ date, type, note });
-  persist();
-  renderCalendarList();
-  document.getElementById('cal-date').value = '';
-  document.getElementById('cal-note').value = '';
+  if(idx >= 0) workCalendar[idx] = { date, type, note }; else workCalendar.push({ date, type, note });
+  persist(); renderCalendarList();
+  document.getElementById('cal-date').value = ''; document.getElementById('cal-note').value = '';
   toast('✅ เพิ่มวันพิเศษแล้ว','ok');
- 
-  try{ await apiPost({ action:'setCalendarDay', date, type, note }); }
-  catch(e){ toast('⚠️ Sync ปฏิทินล้มเหลว','warn'); }
+  try{ await apiPost({ action:'setCalendarDay', date, type, note }); }catch(e){ toast('⚠️ Sync ปฏิทินล้มเหลว','warn'); }
 }
- 
 async function removeCalendarDay(date){
   if(!confirm(`ลบวันพิเศษ ${fmtDate(date)}?`)) return;
   workCalendar = workCalendar.filter(c => c.date !== date);
-  persist();
-  renderCalendarList();
-  toast('ลบแล้ว');
+  persist(); renderCalendarList(); toast('ลบแล้ว');
   try{ await apiPost({ action:'deleteCalendarDay', date }); }catch(e){}
 }
- 
 function renderCalendarList(){
   const box = document.getElementById('cal-list');
   if(!box) return;
@@ -1439,128 +1357,83 @@ function renderCalendarList(){
   const sorted = [...workCalendar].sort((a,b) => b.date.localeCompare(a.date));
   box.innerHTML = sorted.map(c => `<div class="sub-row">
     <div class="sub-row-info">
-      <div class="sub-row-id" style="color:${c.type==='work'?'var(--green)':'var(--orange)'}">
-        ${fmtDate(c.date)} · ${c.type==='work'?'🟢 ทำงาน':'🔴 หยุด'}
-      </div>
+      <div class="sub-row-id" style="color:${c.type==='work'?'var(--green)':'var(--orange)'}">${fmtDate(c.date)} · ${c.type==='work'?'🟢 ทำงาน':'🔴 หยุด'}</div>
       <div class="sub-row-meta">${c.note||'—'}</div>
     </div>
-    <div class="sub-row-actions">
-      <button class="btn btn-danger btn-sm" onclick="removeCalendarDay('${c.date}')">🗑</button>
-    </div>
+    <div class="sub-row-actions"><button class="btn btn-danger btn-sm" onclick="removeCalendarDay('${c.date}')">🗑</button></div>
   </div>`).join('');
 }
-/* ════════════════════════════════════════════════════════════
-   PAGINATION
-   ════════════════════════════════════════════════════════════ */
-function onPageSizeChange(){
-  pageSize = parseInt(document.getElementById('pageSize').value);
-  currentPage = 1;
-  renderTable();
-}
 
+/* ════════════ PAGINATION ════════════ */
+function onPageSizeChange(){ pageSize = parseInt(document.getElementById('pageSize').value); currentPage = 1; renderTable(); }
 function renderPaginationControls(totalItems){
   const nav = document.getElementById('pageNav');
   if(!nav) return;
   nav.innerHTML = '';
   const totalPages = Math.ceil(totalItems / pageSize);
   if(totalPages <= 1) return;
-
   const prevBtn = document.createElement('button');
-  prevBtn.className = 'page-btn'; prevBtn.textContent = '◀';
-  prevBtn.disabled = currentPage === 1;
+  prevBtn.className = 'page-btn'; prevBtn.textContent = '◀'; prevBtn.disabled = currentPage === 1;
   prevBtn.onclick = () => { currentPage--; renderTable(); };
   nav.appendChild(prevBtn);
-
   for(let i = 1; i <= totalPages; i++){
     if(i === 1 || i === totalPages || (i >= currentPage-2 && i <= currentPage+2)){
       const pBtn = document.createElement('button');
-      pBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
-      pBtn.textContent = i;
+      pBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`; pBtn.textContent = i;
       pBtn.onclick = () => { currentPage = i; renderTable(); };
       nav.appendChild(pBtn);
     } else if(i === currentPage-3 || i === currentPage+3){
-      const dot = document.createElement('span');
-      dot.textContent = '...'; dot.style.color = '#4e6a8a';
-      nav.appendChild(dot);
+      const dot = document.createElement('span'); dot.textContent = '...'; dot.style.color = '#4e6a8a'; nav.appendChild(dot);
     }
   }
-
   const nextBtn = document.createElement('button');
-  nextBtn.className = 'page-btn'; nextBtn.textContent = '▶';
-  nextBtn.disabled = currentPage === totalPages;
+  nextBtn.className = 'page-btn'; nextBtn.textContent = '▶'; nextBtn.disabled = currentPage === totalPages;
   nextBtn.onclick = () => { currentPage++; renderTable(); };
   nav.appendChild(nextBtn);
 }
-
 function renderTable(){
   const tbody    = document.getElementById('main-body');
   const emptyBox = document.getElementById('main-empty');
   if(!tbody || !emptyBox) return;
   tbody.innerHTML = '';
-
   const total    = filteredRecords.length;
   const startIdx = (currentPage - 1) * pageSize;
   const endIdx   = Math.min(startIdx + pageSize, total);
   const pageItems = filteredRecords.slice(startIdx, endIdx);
-
   if(document.getElementById('totalRows')) document.getElementById('totalRows').textContent = total;
   if(document.getElementById('rowStart'))  document.getElementById('rowStart').textContent  = total > 0 ? startIdx+1 : 0;
   if(document.getElementById('rowEnd'))    document.getElementById('rowEnd').textContent    = endIdx;
-
   const count = document.getElementById('data-count');
   if(count) count.textContent = `(${total} รายการ${isFilterActive() ? ' — filtered' : ''})`;
   const badge = document.getElementById('filter-badge');
   if(badge) badge.style.display = isFilterActive() ? 'inline-flex' : 'none';
-
-  if(total === 0){
-    emptyBox.style.display = 'block';
-    if(document.getElementById('pageNav')) document.getElementById('pageNav').innerHTML = '';
-    return;
-  }
+  if(total === 0){ emptyBox.style.display = 'block'; if(document.getElementById('pageNav')) document.getElementById('pageNav').innerHTML = ''; return; }
   emptyBox.style.display = 'none';
-
   tbody.innerHTML = pageItems.map(r => `<tr>
-    <td class="td-sub">${r.subId}</td>
-    <td>${fmtDate(r.date)}</td>
-    <td>${fmtTime(r.time)}</td>
+    <td class="td-sub">${r.subId}</td><td>${fmtDate(r.date)}</td><td>${fmtTime(r.time)}</td>
     <td class="td-kwh">${fmtNum(r.kwh, r.subId)}</td>
     <td class="td-used"><strong>${fmtNum(r.used||0, r.subId)}</strong></td>
-    <td class="desktop-only">${r.user||'—'}</td>
-    <td class="desktop-only">${r.note||'—'}</td>
+    <td class="desktop-only">${r.user||'—'}</td><td class="desktop-only">${r.note||'—'}</td>
     <td><div class="td-act">
       <button class="btn btn-primary btn-sm" onclick="openEdit('${r.id}')">✏️</button>
       <button class="btn btn-danger btn-sm"  onclick="deleteRecord('${r.id}')">🗑</button>
-    </div></td>
-  </tr>`).join('');
-
+    </div></td></tr>`).join('');
   renderPaginationControls(total);
 }
 
-/* ════════════════════════════════════════════════════════════
-   ZONES & SUB SELECTION
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ ZONES & SUB SELECTION ════════════ */
 function renderZoneAreas(){
   const container = document.getElementById('zone-areas');
   container.innerHTML = '';
- 
-  // จัดตู้เข้าหมวด
   const grouped = {};
   LOAD_CATEGORIES.forEach(c => grouped[c.name] = []);
-  subs.forEach(s => {
-    const cat = getCategoryOf(s.id);
-    if(!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(s);
-  });
- 
-  // แสดงตามลำดับ LOAD_CATEGORIES (ข้ามหมวดที่ไม่มีตู้)
+  subs.forEach(s => { const cat = getCategoryOf(s.id); if(!grouped[cat]) grouped[cat]=[]; grouped[cat].push(s); });
   LOAD_CATEGORIES.forEach(cat => {
     const list = grouped[cat.name];
     if(!list || !list.length) return;
- 
     const block = document.createElement('div');
     block.className = 'zone-block';
     block.innerHTML = `<div class="zone-title">${cat.icon} ${cat.name} <span style="color:var(--text-3);font-weight:400">(${list.length})</span></div>`;
- 
     const grid = document.createElement('div');
     grid.className = 'sub-grid';
     list.forEach(s => {
@@ -1583,40 +1456,27 @@ function selectSub(subId){
   document.getElementById('entry-section').style.display  = 'block';
   document.getElementById('banner-id').textContent   = activeSub.id;
   document.getElementById('banner-name').textContent = `${activeSub.name} · ${activeSub.zone}`;
-
   const inKwh = document.getElementById('in-kwh');
   const dec   = activeSub.decimal !== undefined ? activeSub.decimal : 0;
   inKwh.value = '';
-  if(dec === 0){
-    inKwh.setAttribute('step','1');
-    inKwh.setAttribute('placeholder','กรอกเลขจำนวนเต็มเท่านั้น');
-  } else {
-    inKwh.setAttribute('step',(1/Math.pow(10,dec)).toString());
-    inKwh.setAttribute('placeholder',`กรอกทศนิยม ${dec} ตำแหน่ง`);
-  }
-
+  if(dec === 0){ inKwh.setAttribute('step','1'); inKwh.setAttribute('placeholder','กรอกเลขจำนวนเต็มเท่านั้น'); }
+  else { inKwh.setAttribute('step',(1/Math.pow(10,dec)).toString()); inKwh.setAttribute('placeholder',`กรอกทศนิยม ${dec} ตำแหน่ง`); }
   const inUser = document.getElementById('in-user');
   if(inUser && currentUser && !inUser.value) inUser.value = currentUser;
-
   document.getElementById('in-note').value = '';
   document.getElementById('preview-box').style.display = 'none';
   setNow();
-
   const sb = document.getElementById('save-btn');
   sb.innerHTML = isConnected ? '✅ บันทึกข้อมูล' : '⚠️ บันทึก (Offline)';
   sb.disabled  = false;
-  updateMeterSummary();
-  renderRecent();
-  renderZoneAreas();
+  updateMeterSummary(); renderRecent(); renderZoneAreas();
 }
-
 function backToList(){
   activeSub = null;
   document.getElementById('sub-list-screen').style.display = 'block';
   document.getElementById('entry-section').style.display   = 'none';
   renderZoneAreas();
 }
-
 function updateMeterSummary(){
   if(!activeSub) return;
   const recs = getSubRecs(activeSub.id);
@@ -1627,10 +1487,8 @@ function updateMeterSummary(){
   const prev = recs.length > 1 ? recs[recs.length - 2] : null;
   document.getElementById('last-reading').textContent = fmtNum(last.kwh, activeSub.id);
   document.getElementById('prev-reading').textContent = prev ? fmtNum(prev.kwh, activeSub.id) : '—';
-  // ใช้ค่า used ของ record ก่อนหน้า (ค่าล่าสุดที่คำนวณได้)
   document.getElementById('last-used').textContent    = prev ? fmtNum(prev.used||0, activeSub.id) : '—';
 }
-
 function previewUsed(){
   if(!activeSub) return;
   const val  = parseFloat(document.getElementById('in-kwh').value);
@@ -1640,17 +1498,13 @@ function previewUsed(){
   const lastKwh    = getLastKwh(activeSub.id);
   const multiplier = activeSub.multiplier !== undefined ? parseFloat(activeSub.multiplier) : 1;
   box.style.display = 'block';
-  if(lastKwh === null){
-    chip.className = 'chip chip-green'; chip.textContent = '📌 บันทึกครั้งแรกของ Sub นี้';
-  } else {
+  if(lastKwh === null){ chip.className = 'chip chip-green'; chip.textContent = '📌 บันทึกครั้งแรกของ Sub นี้'; }
+  else {
     const diff = (val - lastKwh) * multiplier;
     chip.className = diff >= 0 ? 'chip chip-green' : 'chip chip-orange';
-    chip.textContent = diff >= 0
-      ? `⚡ ใช้ไปรอบนี้: +${fmtNum(diff, activeSub.id)} kWh`
-      : `⚠️ ค่าน้อยกว่าครั้งก่อน (${fmtNum(lastKwh, activeSub.id)})`;
+    chip.textContent = diff >= 0 ? `⚡ ใช้ไปรอบนี้: +${fmtNum(diff, activeSub.id)} kWh` : `⚠️ ค่าน้อยกว่าครั้งก่อน (${fmtNum(lastKwh, activeSub.id)})`;
   }
 }
-
 function renderRecent(){
   if(!activeSub) return;
   const recs = getSubRecs(activeSub.id).slice(-5).reverse();
@@ -1659,8 +1513,7 @@ function renderRecent(){
   if(!recs.length){ card.style.display = 'none'; return; }
   card.style.display = 'block';
   body.innerHTML = recs.map(r => `<tr>
-    <td>${fmtDate(r.date)}</td>
-    <td>${fmtTime(r.time)}</td>
+    <td>${fmtDate(r.date)}</td><td>${fmtTime(r.time)}</td>
     <td class="td-kwh">${fmtNum(r.kwh, activeSub.id)}</td>
     <td class="td-used">${fmtNum(r.used||0, activeSub.id)}</td>
     <td>${r.user||'—'}</td>
@@ -1668,9 +1521,7 @@ function renderRecent(){
   </tr>`).join('');
 }
 
-/* ════════════════════════════════════════════════════════════
-   SAVE RECORD — เตือนซ้ำ + เตือนผิดปกติ + editedBy
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ SAVE RECORD ════════════ */
 async function saveRecord(){
   if(!activeSub) return toast('เลือก Substation ก่อน','err');
   const kwh  = parseFloat(document.getElementById('in-kwh').value);
@@ -1681,21 +1532,10 @@ async function saveRecord(){
   if(!date) return toast('เลือกวันที่ด้วย','err');
   const time = document.getElementById('in-time').value;
   const note = document.getElementById('in-note').value || '';
-
-  // เตือนกรอกซ้ำวันเดียวกัน
   const dupe = records.find(r => r.subId === activeSub.id && r.date === date);
-  if(dupe){
-    if(!confirm(`⚠️ ตู้ ${activeSub.id} วันที่ ${fmtDate(date)} มีการบันทึกแล้ว (${fmtNum(dupe.kwh, activeSub.id)} kWh)\nบันทึกเพิ่มอีกหรือไม่?`)) return;
-  }
-
+  if(dupe){ if(!confirm(`⚠️ ตู้ ${activeSub.id} วันที่ ${fmtDate(date)} มีการบันทึกแล้ว (${fmtNum(dupe.kwh, activeSub.id)} kWh)\nบันทึกเพิ่มอีกหรือไม่?`)) return; }
   const lastKwh = getLastKwh(activeSub.id);
-
-  // ค่าน้อยกว่าครั้งก่อน
-  if(lastKwh !== null && kwh < lastKwh){
-    if(!confirm(`ค่าที่กรอก (${kwh}) น้อยกว่าครั้งก่อน (${lastKwh})\nบันทึกต่อหรือไม่?`)) return;
-  }
-
-  // เตือนค่ากระโดดผิดปกติ
+  if(lastKwh !== null && kwh < lastKwh){ if(!confirm(`ค่าที่กรอก (${kwh}) น้อยกว่าครั้งก่อน (${lastKwh})\nบันทึกต่อหรือไม่?`)) return; }
   if(lastKwh !== null && kwh > lastKwh){
     const multiplier = activeSub.multiplier !== undefined ? parseFloat(activeSub.multiplier) : 1;
     const diff       = (kwh - lastKwh) * multiplier;
@@ -1704,193 +1544,112 @@ async function saveRecord(){
       if(!confirm(`⚠️ ค่าที่ใช้รอบนี้ (${Math.round(diff).toLocaleString()}) สูงผิดปกติ\nมากกว่าค่าเฉลี่ยที่ผ่านมา (${Math.round(recentUsed).toLocaleString()}) เกิน ${ABNORMAL_MULTIPLIER} เท่า\n\nกรอกค่าผิดหรือไม่? ยืนยันบันทึก?`)) return;
     }
   }
-
   await doSaveRecord(activeSub, kwh, date, time, user, note);
 }
-
 async function doSaveRecord(sub, kwh, date, time, user, note){
   const now = new Date();
-  const rec = {
-    id: `REC-${now.getTime()}-${Math.floor(Math.random()*1000)}`,
-    subId: sub.id, subName: sub.name, zone: sub.zone,
-    date, time, kwh, user, note,
-    ts: now.toISOString(), editedTs: '', editedBy: ''
-  };
-
-  records.push(rec);
-  records = computeUsed(records);
-  persist();
-
+  const rec = { id: `REC-${now.getTime()}-${Math.floor(Math.random()*1000)}`, subId: sub.id, subName: sub.name, zone: sub.zone, date, time, kwh, user, note, ts: now.toISOString(), editedTs: '', editedBy: '' };
+  records.push(rec); records = computeUsed(records); persist();
   toast('✅ บันทึกแล้ว','ok');
   document.getElementById('in-kwh').value  = '';
   document.getElementById('in-note').value = '';
   document.getElementById('preview-box').style.display = 'none';
   setNow();
   updateMeterSummary(); renderRecent(); renderZoneAreas(); updateBadge();
-
   const btn = document.getElementById('save-btn');
   btn.disabled = true; btn.textContent = '⏳ กำลัง sync...';
   setSyncStatus('busy','กำลังบันทึกลง Google Sheets...');
   try{
-    const payload = { id:rec.id, subId:rec.subId, subName:rec.subName, zone:rec.zone,
-                      date:rec.date, time:rec.time, kwh:rec.kwh, user:rec.user,
-                      note:rec.note, ts:rec.ts, editedTs:'', editedBy:'' };
+    const payload = { id:rec.id, subId:rec.subId, subName:rec.subName, zone:rec.zone, date:rec.date, time:rec.time, kwh:rec.kwh, user:rec.user, note:rec.note, ts:rec.ts, editedTs:'', editedBy:'' };
     await apiPost({ action:'saveRecord', record:payload });
     setSyncStatus('ok','บันทึกลง Sheets แล้ว');
   }catch(e){
     setSyncStatus('error','บันทึกในเครื่องแล้ว — Sync ล้มเหลว');
     toast('⚠️ บันทึกในเครื่องแล้ว แต่ Sync ยังไม่สำเร็จ','warn');
-  }finally{
-    btn.disabled = false; btn.innerHTML = '✅ บันทึกข้อมูล';
-  }
+  }finally{ btn.disabled = false; btn.innerHTML = '✅ บันทึกข้อมูล'; }
 }
-
 function getRecentAvgUsed(subId){
   const chain = getSubRecs(subId).filter(r => (r.used||0) > 0).slice(-5);
   if(!chain.length) return 0;
   return chain.reduce((a,r) => a + (r.used||0), 0) / chain.length;
 }
-
-/* ════════════════════════════════════════════════════════════
-   ปุ่ม "ไม่สามารถบันทึกค่าได้"
-   ════════════════════════════════════════════════════════════ */
 async function markUnableToRecord(){
   if(!activeSub) return toast('เลือก Substation ก่อน','err');
-
   const lastRec = getSubRecs(activeSub.id).slice(-1)[0];
-  if(!lastRec){
-    return toast('⚠️ ยังไม่มีค่ามิเตอร์ก่อนหน้า ไม่สามารถใช้ฟังก์ชันนี้ได้','err');
-  }
-
+  if(!lastRec){ return toast('⚠️ ยังไม่มีค่ามิเตอร์ก่อนหน้า ไม่สามารถใช้ฟังก์ชันนี้ได้','err'); }
   const reason = prompt('📝 ระบุเหตุผลที่จดไม่ได้:\n(เช่น มิเตอร์เสีย, เข้าพื้นที่ไม่ได้)', 'ไม่สามารถบันทึกค่าได้');
   if(reason === null) return;
-
   const date = document.getElementById('in-date').value;
   if(!confirm(`ยืนยันว่าตู้ ${activeSub.id} วันที่ ${fmtDate(date)} จดไม่ได้?\n\nระบบจะใช้ค่าเดิม ${fmtNum(lastRec.kwh, activeSub.id)} kWh\nหมายเหตุ: ${reason}`)) return;
-
   const user = document.getElementById('in-user').value.trim() || currentUser || 'ไม่ระบุ';
   const time = document.getElementById('in-time').value;
-
   await doSaveRecord(activeSub, parseFloat(lastRec.kwh), date, time, user, '⚠️ ' + reason);
   toast('📌 บันทึกว่าจดไม่ได้แล้ว','warn');
 }
 
-/* ════════════════════════════════════════════════════════════
-   EDIT / DELETE RECORD
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ EDIT / DELETE RECORD ════════════ */
 function openEdit(recordId){
   const r = records.find(x => x.id === recordId);
   if(!r) return toast('❌ ไม่พบข้อมูลรายการนี้','err');
   currentEditingRecordId = recordId;
-
   const editSubSelect = document.getElementById('edit-sub');
-  editSubSelect.innerHTML = subs.map(s =>
-    `<option value="${s.id}" ${s.id === r.subId ? 'selected' : ''}>${s.id} — ${s.name}</option>`
-  ).join('');
-
+  editSubSelect.innerHTML = subs.map(s => `<option value="${s.id}" ${s.id === r.subId ? 'selected' : ''}>${s.id} — ${s.name}</option>`).join('');
   document.getElementById('edit-kwh').value  = r.kwh;
   document.getElementById('edit-date').value = r.date;
   document.getElementById('edit-time').value = r.time || '';
   document.getElementById('edit-user').value = r.user || '';
   document.getElementById('edit-note').value = r.note || '';
-
   updateEditKwhStep(r.subId);
   editSubSelect.onchange = e => updateEditKwhStep(e.target.value);
-
   const modal = document.getElementById('edit-modal');
-  modal.style.display = 'flex';
-  modal.classList.add('open');
+  modal.style.display = 'flex'; modal.classList.add('open');
 }
-
 function updateEditKwhStep(subId){
   const sub      = subs.find(s => s.id === subId);
   const dec      = sub?.decimal !== undefined ? sub.decimal : 0;
   const inputKwh = document.getElementById('edit-kwh');
-  if(dec === 0){
-    inputKwh.setAttribute('step','1');
-    inputKwh.setAttribute('placeholder','กรอกเลขจำนวนเต็มเท่านั้น');
-  } else {
-    inputKwh.setAttribute('step',(1/Math.pow(10,dec)).toString());
-    inputKwh.setAttribute('placeholder',`กรอกทศนิยม ${dec} ตำแหน่ง`);
-  }
+  if(dec === 0){ inputKwh.setAttribute('step','1'); inputKwh.setAttribute('placeholder','กรอกเลขจำนวนเต็มเท่านั้น'); }
+  else { inputKwh.setAttribute('step',(1/Math.pow(10,dec)).toString()); inputKwh.setAttribute('placeholder',`กรอกทศนิยม ${dec} ตำแหน่ง`); }
 }
-
-function closeEdit(){
-  currentEditingRecordId = null;
-  const modal = document.getElementById('edit-modal');
-  modal.style.display = 'none';
-  modal.classList.remove('open');
-}
+function closeEdit(){ currentEditingRecordId = null; const modal = document.getElementById('edit-modal'); modal.style.display = 'none'; modal.classList.remove('open'); }
 function closeEditIf(event){ if(event.target.id === 'edit-modal') closeEdit(); }
-
 async function saveEdit(){
   if(!currentEditingRecordId) return;
   const idx = records.findIndex(r => r.id === currentEditingRecordId);
   if(idx < 0) return toast('❌ ไม่พบรายการ','err');
-
   const newSubId = document.getElementById('edit-sub').value;
   const kwh      = parseFloat(document.getElementById('edit-kwh').value);
   const date     = document.getElementById('edit-date').value;
   const time     = document.getElementById('edit-time').value;
   const user     = document.getElementById('edit-user').value.trim();
   const note     = document.getElementById('edit-note').value;
-
   if(isNaN(kwh) || kwh < 0) return toast('กรอกค่ามิเตอร์ให้ถูกต้อง','err');
   if(!date) return toast('เลือกวันที่ด้วย','err');
-
   const sub = subs.find(s => s.id === newSubId);
-  records[idx] = {
-    ...records[idx],
-    subId: newSubId,
-    subName: sub?.name || records[idx].subName,
-    zone: sub?.zone || records[idx].zone,
-    kwh, date, time, user, note,
-    editedTs: new Date().toISOString(),
-    editedBy: currentUser || 'ผู้บันทึก'
-  };
-
-  records = computeUsed(records);
-  persist();
+  records[idx] = { ...records[idx], subId: newSubId, subName: sub?.name || records[idx].subName, zone: sub?.zone || records[idx].zone, kwh, date, time, user, note, editedTs: new Date().toISOString(), editedBy: currentUser || 'ผู้บันทึก' };
+  records = computeUsed(records); persist();
   const saved = records[idx];
-  closeEdit();
-  renderAll();
-  toast('✅ แก้ไขแล้ว','ok');
-
+  closeEdit(); renderAll(); toast('✅ แก้ไขแล้ว','ok');
   setSyncStatus('busy','กำลังซิงค์...');
   try{
-    const payload = { id:saved.id, subId:saved.subId, subName:saved.subName, zone:saved.zone,
-                      date:saved.date, time:saved.time, kwh:saved.kwh, user:saved.user,
-                      note:saved.note, ts:saved.ts, editedTs:saved.editedTs, editedBy:saved.editedBy };
+    const payload = { id:saved.id, subId:saved.subId, subName:saved.subName, zone:saved.zone, date:saved.date, time:saved.time, kwh:saved.kwh, user:saved.user, note:saved.note, ts:saved.ts, editedTs:saved.editedTs, editedBy:saved.editedBy };
     await apiPost({ action:'editRecord', record:payload });
     setSyncStatus('ok','แก้ไขสำเร็จ');
-  }catch(e){
-    setSyncStatus('error','แก้ในเครื่องแล้ว — Sync ล้มเหลว');
-  }
+  }catch(e){ setSyncStatus('error','แก้ในเครื่องแล้ว — Sync ล้มเหลว'); }
 }
-
 async function deleteRecord(id){
   if(!confirm('ลบรายการนี้?')) return;
   const target = records.find(r => r.id === id);
   if(!target) return;
-
   records = records.filter(r => r.id !== id);
-  records = computeUsed(records);
-  persist();
-  toast('ลบแล้ว');
-  renderAll();
-
+  records = computeUsed(records); persist();
+  toast('ลบแล้ว'); renderAll();
   setSyncStatus('busy','กำลังลบจาก Sheets...');
-  try{
-    await apiPost({ action:'deleteRecord', id:String(id) });
-    setSyncStatus('ok','ลบสำเร็จ');
-  }catch(e){
-    setSyncStatus('error','Offline — จะ sync เมื่อเชื่อมต่อได้');
-  }
+  try{ await apiPost({ action:'deleteRecord', id:String(id) }); setSyncStatus('ok','ลบสำเร็จ'); }
+  catch(e){ setSyncStatus('error','Offline — จะ sync เมื่อเชื่อมต่อได้'); }
 }
 
-/* ════════════════════════════════════════════════════════════
-   EDIT SUBSTATION
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ EDIT SUBSTATION ════════════ */
 function openEditSub(i){
   editSubIndex = i;
   const s = subs[i];
@@ -1900,66 +1659,40 @@ function openEditSub(i){
   document.getElementById('esub-decimal').value    = String(s.decimal    !== undefined ? s.decimal    : 0);
   document.getElementById('esub-multiplier').value = String(s.multiplier !== undefined ? s.multiplier : 1);
   const modal = document.getElementById('edit-sub-modal');
-  modal.style.display = 'flex';
-  modal.classList.add('open');
+  modal.style.display = 'flex'; modal.classList.add('open');
 }
-
-function closeEditSub(){
-  editSubIndex = null;
-  const modal = document.getElementById('edit-sub-modal');
-  modal.style.display = 'none';
-  modal.classList.remove('open');
-}
+function closeEditSub(){ editSubIndex = null; const modal = document.getElementById('edit-sub-modal'); modal.style.display = 'none'; modal.classList.remove('open'); }
 function closeEditSubIf(event){ if(event.target.id === 'edit-sub-modal') closeEditSub(); }
-
 async function saveEditSub(){
   if(editSubIndex === null) return;
   const name       = document.getElementById('esub-name').value.trim();
   const zone       = document.getElementById('esub-zone').value.trim();
   const decimal    = parseInt(document.getElementById('esub-decimal').value)    || 0;
   const multiplier = parseFloat(document.getElementById('esub-multiplier').value) || 1;
-
   if(!name || !zone) return toast('⚠️ กรุณากรอกชื่อตู้และ Zone ให้ครบ','err');
   if(multiplier <= 0) return toast('⚠️ ตัวคูณต้องมากกว่า 0','err');
-
   const updatedSub = { ...subs[editSubIndex], name, zone, decimal, multiplier };
-  subs[editSubIndex] = updatedSub;
-  persist();
-  closeEditSub();
-
-  records = computeUsed(records); // multiplier เปลี่ยน → คำนวณ used ใหม่
-  persist();
-  renderSubList(); renderZoneAreas(); populateDDs();
-  renderAll();
+  subs[editSubIndex] = updatedSub; persist(); closeEditSub();
+  records = computeUsed(records); persist();
+  renderSubList(); renderZoneAreas(); populateDDs(); renderAll();
   toast(`✅ อัปเดตตู้ ${updatedSub.id} เรียบร้อย`,'ok');
-
   setSyncStatus('busy','กำลังซิงค์ลง Google Sheets...');
   try{
     const res = await apiPost({ action:'updateSubConfig', sub:updatedSub });
     if(res && res.success) setSyncStatus('ok','บันทึกข้อมูลตู้ลงแผ่นชีทสำเร็จ');
     else throw new Error(res?.error || 'Sheets rejected');
-  }catch(e){
-    setSyncStatus('error','บันทึกลงชีทไม่สำเร็จ (แต่เซฟเก็บในแคชแล้ว)');
-  }
+  }catch(e){ setSyncStatus('error','บันทึกลงชีทไม่สำเร็จ (แต่เซฟเก็บในแคชแล้ว)'); }
 }
 
-/* ════════════════════════════════════════════════════════════
-   FILTER & DATA TABLE
-   ════════════════════════════════════════════════════════════ */
-function isFilterActive(){
-  return !!(activeFilter.sub || activeFilter.user || activeFilter.from || activeFilter.to);
-}
-
+/* ════════════ FILTER & DATA ════════════ */
+function isFilterActive(){ return !!(activeFilter.sub || activeFilter.user || activeFilter.from || activeFilter.to); }
 function renderData(){ applyFilter(); }
-
 function applyFilter(){
   const subVal   = document.getElementById('fl-sub').value;
   const userVal  = document.getElementById('fl-user')?.value.trim().toLowerCase() || '';
   const startVal = document.getElementById('fl-from').value;
   const endVal   = document.getElementById('fl-to').value;
-
   activeFilter = { sub:subVal, user:userVal, from:startVal, to:endVal };
-
   filteredRecords = [...records].reverse().filter(r => {
     if(subVal   && r.subId !== subVal) return false;
     if(userVal  && !String(r.user).toLowerCase().includes(userVal)) return false;
@@ -1967,65 +1700,43 @@ function applyFilter(){
     if(endVal   && r.date > endVal)    return false;
     return true;
   });
-
-  currentPage = 1;
-  renderTable();
+  currentPage = 1; renderTable();
 }
-
 function clearFilter(){
-  ['fl-sub','fl-user','fl-from','fl-to'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.value = '';
-  });
+  ['fl-sub','fl-user','fl-from','fl-to'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   applyFilter();
 }
-
 function populateDDs(){
-  const sOpts = '<option value="">ทั้งหมด</option>' +
-    subs.map(s => `<option value="${s.id}"${s.id===activeFilter.sub?' selected':''}>${s.id} — ${s.name}</option>`).join('');
-  const cOpts = '<option value="">เลือก Sub...</option>' +
-    subs.map(s => `<option value="${s.id}">${s.id}</option>`).join('');
+  const sOpts = '<option value="">ทั้งหมด</option>' + subs.map(s => `<option value="${s.id}"${s.id===activeFilter.sub?' selected':''}>${s.id} — ${s.name}</option>`).join('');
+  const cOpts = '<option value="">เลือก Sub...</option>' + subs.map(s => `<option value="${s.id}">${s.id}</option>`).join('');
   document.getElementById('fl-sub').innerHTML = sOpts;
   const cs = document.getElementById('chart-sub');
   if(cs) cs.innerHTML = cOpts;
 }
-
 function renderStats(){
   const total    = records.length;
   const subsDone = new Set(records.map(r => r.subId)).size;
   const today    = new Date().toISOString().split('T')[0];
   const todayN   = records.filter(r => r.date === today).length;
   const totalUsed = records.reduce((a,r) => a + (parseFloat(r.used)||0), 0);
-
   document.getElementById('stats-row').innerHTML = `
     <div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">Records ทั้งหมด</div></div>
     <div class="stat"><div class="stat-val">${subsDone}/${subs.length}</div><div class="stat-lbl">Sub ที่บันทึกแล้ว</div></div>
     <div class="stat"><div class="stat-val">${todayN}</div><div class="stat-lbl">บันทึกวันนี้</div></div>
     <div class="stat"><div class="stat-val" style="color:var(--green)">${Math.round(totalUsed).toLocaleString()}</div><div class="stat-lbl">รวมใช้ไฟ (kWh)</div></div>`;
 }
+function updateBadge(){ document.getElementById('hdr-badge').textContent = records.length + ' rec'; }
 
-function updateBadge(){
-  document.getElementById('hdr-badge').textContent = records.length + ' rec';
-}
-
-/* ════════════════════════════════════════════════════════════
-   CHART
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ CHART (รายตู้) ════════════ */
 function setChartRange(days){
   const to   = new Date();
   const toEl = document.getElementById('chart-to');
   const fromEl = document.getElementById('chart-from');
   toEl.value = to.toISOString().split('T')[0];
-  if(days === 0){
-    fromEl.value = '';
-  } else {
-    const from = new Date();
-    from.setDate(from.getDate() - days + 1);
-    fromEl.value = from.toISOString().split('T')[0];
-  }
+  if(days === 0){ fromEl.value = ''; }
+  else { const from = new Date(); from.setDate(from.getDate() - days + 1); fromEl.value = from.toISOString().split('T')[0]; }
   renderChart();
 }
-
 function renderChart(){
   const subId   = document.getElementById('chart-sub').value;
   const fromVal = document.getElementById('chart-from')?.value || '';
@@ -2033,28 +1744,20 @@ function renderChart(){
   const area    = document.getElementById('chart-area');
   const summary = document.getElementById('chart-summary');
   if(!subId){ area.innerHTML='<div class="section-empty">📈 เลือก Substation เพื่อดูกราฟ</div>'; summary.innerHTML=''; return; }
- 
   let recs = getSubRecs(subId);
   if(fromVal) recs = recs.filter(r => r.date >= fromVal);
   if(toVal)   recs = recs.filter(r => r.date <= toVal);
- 
   if(!recs.length){ area.innerHTML='<div class="section-empty">📭 ไม่มีข้อมูลในช่วงที่เลือก</div>'; summary.innerHTML=''; return; }
- 
-  // ✅ คำนวณช่วงวันแบบ local (ไม่ให้ timezone เลื่อน)
   function parseLocal(s){ const [y,m,d]=String(s).split('-').map(Number); return new Date(y,m-1,d); }
   const spanDays = fromVal ? Math.ceil((parseLocal(toVal||new Date().toISOString().slice(0,10)) - parseLocal(fromVal))/864e5) : 999;
   const gran = spanDays <= 31 ? 'day' : spanDays <= 90 ? 'week' : 'month';
- 
   const sub = subs.find(s => s.id === subId);
   const dec = sub ? sub.decimal : 0;
- 
-  // aggregate ตาม granularity
   const byKey = {};
   recs.forEach(r => {
     let key, label;
-    if(gran === 'day'){
-      key = r.date; label = fmtChartDate(r.date);
-    } else if(gran === 'week'){
+    if(gran === 'day'){ key = r.date; label = fmtChartDate(r.date); }
+    else if(gran === 'week'){
       const d = parseLocal(r.date); const day = d.getDay()||7;
       d.setDate(d.getDate()+4-day);
       const ys = new Date(d.getFullYear(),0,1);
@@ -2069,26 +1772,17 @@ function renderChart(){
     byKey[key].used += parseFloat(r.used)||0;
     byKey[key].count++;
   });
- 
   const items  = Object.values(byKey).sort((a,b) => a.key.localeCompare(b.key));
   const showItems = gran === 'day' ? items.slice(-31) : items;
   const maxVal = Math.max(...showItems.map(d => d.used), 1);
   const CHART_H = 150;
- 
-  // ✅ แท่งน้อย = พอดีจอ, เยอะ = เลื่อนได้
   const fitScreen = showItems.length <= 16;
- 
   const bars = showItems.map(d => {
     const pct  = Math.max(0,d.used)/maxVal;
     const barH = Math.max(3, Math.round(pct*CHART_H));
     const valStr = parseFloat(d.used.toFixed(dec)).toLocaleString('th-TH',{maximumFractionDigits:dec});
     let barBg = 'linear-gradient(180deg,var(--green),var(--accent))', opacity = '1', labelCol = 'var(--text-3)';
-    if(gran === 'day'){
-      const dType = getDayType(d.firstDate);
-      if(dType === 'holiday'){
-        barBg = 'linear-gradient(180deg,var(--orange),var(--red))'; opacity = '0.65'; labelCol = 'var(--orange)';
-      }
-    }
+    if(gran === 'day'){ const dType = getDayType(d.firstDate); if(dType === 'holiday'){ barBg = 'linear-gradient(180deg,var(--orange),var(--red))'; opacity = '0.65'; labelCol = 'var(--orange)'; } }
     const colStyle = fitScreen ? 'flex:1;min-width:0' : 'min-width:46px';
     return `<div class="vbar-col" style="${colStyle}" title="${d.label} — ${valStr} kWh (${d.count} ครั้ง)">
       <div class="vbar-val" style="font-size:${fitScreen?'8px':'9px'}">${valStr}</div>
@@ -2096,33 +1790,25 @@ function renderChart(){
       <div class="vbar-label" style="color:${labelCol}">${d.label}</div>
     </div>`;
   }).join('');
- 
   const granTxt = {day:'รายวัน',week:'รายสัปดาห์',month:'รายเดือน'}[gran];
   const chartStyle = fitScreen ? 'min-width:100%' : 'min-width:max-content';
   area.innerHTML = `
     <div style="font-size:9px;color:var(--text-3);margin-bottom:6px;font-family:var(--font-mono)">
-      ${granTxt} · ${showItems.length} ช่วง ·
-      ${gran==='day' ? '<span style="color:var(--green)">▮</span> ทำงาน <span style="color:var(--orange)">▮</span> หยุด' : ''}
+      ${granTxt} · ${showItems.length} ช่วง · ${gran==='day' ? '<span style="color:var(--green)">▮</span> ทำงาน <span style="color:var(--orange)">▮</span> หยุด' : ''}
     </div>
     <div class="vbar-scroll"><div class="vbar-chart" style="${chartStyle}">${bars}</div></div>`;
- 
   const totalUsed = showItems.reduce((a,d) => a+d.used, 0);
   const avgVal    = showItems.length ? totalUsed/showItems.length : 0;
   summary.innerHTML = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
       <span class="chip chip-green">⚡ รวม ${parseFloat(totalUsed.toFixed(dec)).toLocaleString()} kWh</span>
-      <span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">
-        📊 เฉลี่ย ${parseFloat(avgVal.toFixed(dec)).toLocaleString()} kWh/${granTxt.replace('ราย','')}
-      </span>
+      <span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">📊 เฉลี่ย ${parseFloat(avgVal.toFixed(dec)).toLocaleString()} kWh/${granTxt.replace('ราย','')}</span>
     </div>`;
 }
 function renderAllChart(){
   const area    = document.getElementById('all-chart');
-  const summary = subs.map(s => ({
-    id:    s.id,
-    total: records.filter(r => r.subId === s.id).reduce((a,r) => a + (parseFloat(r.used)||0), 0)
-  })).filter(x => x.total > 0).sort((a,b) => b.total - a.total);
-
+  const summary = subs.map(s => ({ id: s.id, total: records.filter(r => r.subId === s.id).reduce((a,r) => a + (parseFloat(r.used)||0), 0) }))
+    .filter(x => x.total > 0).sort((a,b) => b.total - a.total);
   if(!summary.length){ area.innerHTML = '<div class="section-empty">📊 ยังไม่มีข้อมูล</div>'; return; }
   const maxVal = Math.max(...summary.map(x => x.total), 1);
   area.innerHTML = summary.map(x => `<div class="bar-row">
@@ -2132,9 +1818,7 @@ function renderAllChart(){
   </div>`).join('');
 }
 
-/* ════════════════════════════════════════════════════════════
-   QR
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ QR ════════════ */
 function renderQR(){
   const grid = document.getElementById('qr-grid');
   grid.innerHTML = '';
@@ -2143,24 +1827,13 @@ function renderQR(){
     const qid = 'qr_' + sub.id.replace(/\W/g,'_');
     const div = document.createElement('div');
     div.className = 'qr-item';
-    div.innerHTML = `
-      <div class="qi-id">${sub.id}</div>
-      <div class="qi-name">${sub.name}<br><span style="color:var(--purple)">${sub.zone}</span></div>
-      <div class="qi-qr" id="${qid}"></div>
-      <div class="qi-url">${url.length>55 ? url.slice(0,52)+'…' : url}</div>`;
+    div.innerHTML = `<div class="qi-id">${sub.id}</div><div class="qi-name">${sub.name}<br><span style="color:var(--purple)">${sub.zone}</span></div><div class="qi-qr" id="${qid}"></div><div class="qi-url">${url.length>55 ? url.slice(0,52)+'…' : url}</div>`;
     grid.appendChild(div);
-    setTimeout(() => {
-      try{
-        document.getElementById(qid).innerHTML = '';
-        new QRCode(document.getElementById(qid), { text:url, width:110, height:110, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M });
-      }catch(e){}
-    }, 80);
+    setTimeout(() => { try{ document.getElementById(qid).innerHTML = ''; new QRCode(document.getElementById(qid), { text:url, width:110, height:110, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M }); }catch(e){} }, 80);
   });
 }
 
-/* ════════════════════════════════════════════════════════════
-   SETTINGS — SUB MANAGEMENT
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ SETTINGS ════════════ */
 function renderSubList(){
   document.getElementById('sub-count').textContent = subs.length;
   if(!subs.length){ document.getElementById('sub-list').innerHTML='<div class="section-empty">ยังไม่มี Substation</div>'; return; }
@@ -2181,7 +1854,6 @@ function renderSubList(){
     </div>`;
   }).join('');
 }
-
 function addSub(){
   const id      = document.getElementById('new-id').value.trim().toUpperCase();
   const name    = document.getElementById('new-name').value.trim();
@@ -2195,32 +1867,23 @@ function addSub(){
   document.getElementById('new-decimal').value = '0';
   renderSubList(); renderZoneAreas(); populateDDs();
   toast('✅ เพิ่ม ' + id,'ok');
-
-  // sync ขึ้น server
   apiPost({ action:'updateSubConfig', sub:subs[subs.length-1] }).catch(()=>{});
 }
-
 function removeSub(i){
   const s   = subs[i];
   const cnt = records.filter(r => r.subId === s.id).length;
-  const msg = cnt > 0
-    ? `ลบ ${s.id} — ${s.name}?\n(มีข้อมูล ${cnt} records ที่เชื่อมกับตู้นี้)`
-    : `ลบ ${s.id} — ${s.name}?`;
+  const msg = cnt > 0 ? `ลบ ${s.id} — ${s.name}?\n(มีข้อมูล ${cnt} records ที่เชื่อมกับตู้นี้)` : `ลบ ${s.id} — ${s.name}?`;
   if(!confirm(msg)) return;
-  subs.splice(i, 1);
-  persist();
+  subs.splice(i, 1); persist();
   renderSubList(); renderZoneAreas(); populateDDs();
   toast('ลบ ' + s.id);
 }
 
-/* ════════════════════════════════════════════════════════════
-   EXPORT / IMPORT
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ EXPORT / IMPORT ════════════ */
 function exportExcel(){
   const hasFilter    = isFilterActive();
   const dataToExport = hasFilter ? [...filteredRecords] : [...records].reverse();
   if(!dataToExport.length) return toast(hasFilter?'ไม่มีข้อมูลตาม Filter':'ยังไม่มีข้อมูล','err');
-
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(dataToExport.map(r => ({
     'ID': r.id, 'Substation ID': r.subId, 'Substation Name': r.subName, 'Zone': r.zone,
@@ -2233,16 +1896,12 @@ function exportExcel(){
   XLSX.writeFile(wb, `Meter_${hasFilter?'Filtered_':''}${new Date().toISOString().slice(0,10)}.xlsx`);
   toast(`✅ Export ${dataToExport.length} rows${hasFilter?' (filtered)':''}`, 'ok');
 }
-
 function exportJSON(){
   const blob = new Blob([JSON.stringify({ subs, records, calendar:workCalendar, exported:new Date().toISOString() }, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
-  a.download = 'substation_backup_' + Date.now() + '.json';
-  a.click();
+  a.href = URL.createObjectURL(blob); a.download = 'substation_backup_' + Date.now() + '.json'; a.click();
   toast('💾 Backup สำเร็จ','ok');
 }
-
 function doImport(e){
   const file = e.target.files[0]; if(!file) return;
   const r = new FileReader();
@@ -2252,46 +1911,33 @@ function doImport(e){
       if(d.subs)     subs         = d.subs.map(s => ({ ...s, decimal: s.decimal!==undefined?s.decimal:0 }));
       if(d.records)  records      = computeUsed(d.records);
       if(d.calendar) workCalendar = d.calendar;
-      currentPage = 1;
-      persist(); renderAll();
+      currentPage = 1; persist(); renderAll();
       toast(`📂 Import สำเร็จ — ${records.length} records`,'ok');
     }catch(err){ toast('ไฟล์ไม่ถูกต้อง','err'); }
   };
-  r.readAsText(file);
-  e.target.value = '';
+  r.readAsText(file); e.target.value = '';
 }
-
 function clearCache(){
   if(!confirm('ล้าง Cache ในเครื่องนี้?\n(ข้อมูลใน Google Sheets ยังอยู่ครบ)')) return;
   records = []; subs = []; workCalendar = []; filteredRecords = []; currentPage = 1;
-  localStorage.removeItem('records');
-  localStorage.removeItem('subs');
-  localStorage.removeItem('calendar');
+  localStorage.removeItem('records'); localStorage.removeItem('subs'); localStorage.removeItem('calendar');
   toast('ล้าง Cache แล้ว — กำลังโหลดจาก Sheets ใหม่...','warn');
   loadFromServer();
 }
 
-/* ════════════════════════════════════════════════════════════
-   TOAST
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ TOAST ════════════ */
 function toast(msg, type=''){
   const t = document.getElementById('toast');
   if(!t) return;
-  t.textContent = msg;
-  t.className   = 'on' + (type ? ' '+type : '');
-  clearTimeout(t._t);
-  t._t = setTimeout(() => { t.className = ''; }, 3200);
+  t.textContent = msg; t.className = 'on' + (type ? ' '+type : '');
+  clearTimeout(t._t); t._t = setTimeout(() => { t.className = ''; }, 3200);
 }
 
-/* ════════════════════════════════════════════════════════════
-   ENTER KEY — Login admin
-   ════════════════════════════════════════════════════════════ */
+/* ════════════ ENTER KEY — Login ════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   ['login-user','login-pass'].forEach(id => {
     const el = document.getElementById(id);
-    if(el) el.addEventListener('keydown', e => {
-      if(e.key === 'Enter') handleLogin();
-    });
+    if(el) el.addEventListener('keydown', e => { if(e.key === 'Enter') handleLogin(); });
   });
 });
 
