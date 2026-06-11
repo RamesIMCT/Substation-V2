@@ -750,15 +750,15 @@ tr:hover td{background:var(--surface-2)}
 
 /* ───────── นิยามคอลัมน์รายงาน (group หลัก 9) ───────── */
 const REPORT_MAIN = [
-  { key:'BODY',        name:'BODY',        ids:['SUB-15','SUB-18','SUB-19','SUB-20','SUB-24','SUB-27','SUB-28','SUB-29','SUB-30'] },
-  { key:'PAINT',       name:'PAINT',       ids:['SUB-09','SUB-10','SUB-11','SUB-12','SUB-38'] },
-  { key:'LA',          name:'LA',          ids:['SUB-21','SUB-22'] },
-  { key:'UA',          name:'UA',          ids:['SUB-05'] },
-  { key:'PT7,8',       name:'PT7,8',       ids:['SUB-02','SUB-03','SUB-04'] },
-  { key:'FRAME',       name:'FRAME',       ids:['SUB-33','SUB-34','SUB-36','SUB-37'] },
-  { key:'OFFICE',      name:'OFFICE',      ids:['SUB-31'] },
-  { key:'FR',          name:'FR',          ids:['SUB-08'] },
-  { key:'OLD CANTEEN', name:'OLD CANTEEN', ids:['CANT-10'] }
+  { key:'BODY',        name:'BODY',        ids:['SUB-15','SUB-18','SUB-19','SUB-20','SUB-24','SUB-27','SUB-28','SUB-29','SUB-30'], minus:[] },
+  { key:'PAINT',       name:'PAINT',       ids:['SUB-09','SUB-10','SUB-11','SUB-12','SUB-38'], minus:['AC-02','CT-ED','CHIL-AS3','CHIL-AS4','CT-AS','CHIL-AS12'] },
+  { key:'LA',          name:'LA',          ids:['SUB-21','SUB-22'], minus:[] },
+  { key:'UA',          name:'UA',          ids:['SUB-05'], minus:[] },
+  { key:'PT7,8',       name:'PT7,8',       ids:['SUB-02','SUB-03','SUB-04'], minus:[] },
+  { key:'FRAME',       name:'FRAME',       ids:['SUB-33','SUB-34','SUB-36','SUB-37'], minus:[] },
+  { key:'OFFICE',      name:'OFFICE',      ids:['SUB-31'], minus:[] },
+  { key:'FR',          name:'FR',          ids:['SUB-08'], minus:['CT-AC','CT-ED','WWT-01','RO-01','RO-02','DI-01'] },
+  { key:'OLD CANTEEN', name:'OLD CANTEEN', ids:['CANT-10'], minus:[] }
 ];
 /* utility แยกย่อย (AC → Boiler) */
 const REPORT_UTIL = [
@@ -1143,9 +1143,12 @@ function meterUsedOnDay(meterMap, subId, dateStr, allDates){
   }
   return Math.max(0, cur.lastKwh - cur.firstKwh) * mult;
 }
-function sumGroupOnDay(meterMap, ids, dateStr, allDates){
+function sumGroupOnDay(meterMap, col, dateStr, allDates){
+  const ids   = Array.isArray(col) ? col : (col.ids || []);
+  const minus = Array.isArray(col) ? []  : (col.minus || []);
   let total = 0, hasAny = false;
   ids.forEach(id => { const u = meterUsedOnDay(meterMap, id, dateStr, allDates); if(u !== null){ total += u; hasAny = true; } });
+  minus.forEach(id => { const u = meterUsedOnDay(meterMap, id, dateStr, allDates); if(u !== null){ total -= u; hasAny = true; } });
   return hasAny ? total : null;
 }
 
@@ -1159,8 +1162,8 @@ function renderReport(month, lastDay){
 
   const rows = days.map(dateStr => {
     const cells = {};
-    REPORT_MAIN.forEach(c => cells[c.key] = sumGroupOnDay(meterMap, c.ids, dateStr, allDates));
-    REPORT_UTIL.forEach(c => cells[c.key] = sumGroupOnDay(meterMap, c.ids, dateStr, allDates));
+    REPORT_MAIN.forEach(c => cells[c.key] = sumGroupOnDay(meterMap, c, dateStr, allDates));
+    REPORT_UTIL.forEach(c => cells[c.key] = sumGroupOnDay(meterMap, c, dateStr, allDates));
     let utilTotal = 0, utilHas = false;
     REPORT_UTIL.forEach(c => { if(cells[c.key] !== null){ utilTotal += cells[c.key]; utilHas = true; } });
     cells['UTILITY'] = utilHas ? utilTotal : null;
