@@ -28,16 +28,16 @@
   --fs-2xl:clamp(28px,7vw,36px);
 }
 [data-theme="dark"]{
-  --bg:#0b1220;--surface-1:#111827;--surface-2:#1a2336;--surface-3:#1f2d42;--surface-4:#243350;
-  --border:#1e2e45;--border-hi:#2a3f60;
-  --text-1:#e8f0ff;--text-2:#8fa8c8;--text-3:#4e6a8a;
-  --accent:#38bdf8;--accent-dim:rgba(56,189,248,.12);--accent-border:rgba(56,189,248,.3);
-  --green:#34d399;--green-dim:rgba(52,211,153,.12);--green-border:rgba(52,211,153,.3);
+  --bg:#090E17;--surface-1:#111827;--surface-2:#182233;--surface-3:#1f2c3f;--surface-4:#26354c;
+  --border:#1e2c42;--border-hi:#2d425f;
+  --text-1:#e8f0ff;--text-2:#8fa8c8;--text-3:#566d8a;
+  --accent:#00D4FF;--accent-dim:rgba(0,212,255,.12);--accent-border:rgba(0,212,255,.32);
+  --green:#22C55E;--green-dim:rgba(34,197,94,.12);--green-border:rgba(34,197,94,.32);
   --orange:#fb923c;--orange-dim:rgba(251,146,60,.12);
-  --red:#f87171;--red-dim:rgba(248,113,113,.12);
-  --purple:#a78bfa;--yellow:#fbbf24;--yellow-dim:rgba(251,191,36,.12);
-  --btn-pri-bg:linear-gradient(135deg,#38bdf8,#0284c7);--btn-pri-text:#000;
-  --btn-save-bg:linear-gradient(135deg,#34d399,#059669);--btn-save-text:#000;
+  --red:#EF4444;--red-dim:rgba(239,68,68,.12);
+  --purple:#a78bfa;--yellow:#FACC15;--yellow-dim:rgba(250,204,21,.12);
+  --btn-pri-bg:linear-gradient(135deg,#00D4FF,#0284c7);--btn-pri-text:#001018;
+  --btn-save-bg:linear-gradient(135deg,#22C55E,#059669);--btn-save-text:#001a0e;
 }
 [data-theme="light"]{
   --bg:#f0f4f8;--surface-1:#ffffff;--surface-2:#f8fafc;--surface-3:#eef2f7;--surface-4:#e4eaf4;
@@ -75,7 +75,14 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;backgro
 .sync-dot.err{background:var(--red);box-shadow:0 0 6px var(--red)}
 .sync-dot.busy{background:var(--yellow);animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-
+/* Card hover/active polish */
+.card{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--border-hi)}
+.sub-card{transition:var(--trans),transform .12s ease}
+.sub-card:active{transform:scale(.96)}
+.stat{transition:transform .2s ease,box-shadow .2s ease}
+.stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.btn{transition:var(--trans),transform .1s ease}
 /* SYNC BANNER */
 .sync-banner{flex:0 0 auto;display:none;align-items:center;gap:8px;padding:6px 14px;font-size:var(--fs-xs);font-weight:600;border-bottom:1px solid var(--border)}
 .sync-banner.show{display:flex}
@@ -590,8 +597,17 @@ tr:hover td{background:var(--surface-2)}
         <strong>Base URL:</strong> <span style="font-family:var(--font-mono);font-size:9px;color:var(--accent)" id="qr-url-preview">—</span><br>
         <small style="color:var(--text-3)">สแกน QR เปิดตู้ได้ทันที</small>
       </div>
+      <div class="f-row">
+         <label class="f-label">กรอง Zone</label>
+         <select class="f-input" id="qr-zone-filter" onchange="renderQR()">
+            <option value="">ทั้งหมด</option>
+         </select>
+      </div>
+       
+       
       <div class="qr-grid" id="qr-grid"></div>
     </div>
+     
   </div>
 
   <!-- SETTINGS -->
@@ -1822,14 +1838,33 @@ function renderAllChart(){
 function renderQR(){
   const grid = document.getElementById('qr-grid');
   grid.innerHTML = '';
-  subs.forEach(sub => {
+
+  // เติม dropdown zone (ครั้งแรก)
+  const zoneSel = document.getElementById('qr-zone-filter');
+  if(zoneSel && zoneSel.options.length <= 1){
+    const zones = [...new Set(subs.map(s => s.zone))].sort();
+    zoneSel.innerHTML = '<option value="">ทั้งหมด</option>' +
+      zones.map(z => `<option value="${z}">${z}</option>`).join('');
+  }
+
+  const filterZone = zoneSel?.value || '';
+  const list = filterZone ? subs.filter(s => s.zone === filterZone) : subs;
+
+  if(!list.length){ grid.innerHTML = '<div class="section-empty">ไม่มีตู้ใน Zone นี้</div>'; return; }
+
+  list.forEach(sub => {
     const url = QR_BASE_URL.replace(/\/$/, '') + '?sub=' + encodeURIComponent(sub.id);
     const qid = 'qr_' + sub.id.replace(/\W/g,'_');
     const div = document.createElement('div');
     div.className = 'qr-item';
     div.innerHTML = `<div class="qi-id">${sub.id}</div><div class="qi-name">${sub.name}<br><span style="color:var(--purple)">${sub.zone}</span></div><div class="qi-qr" id="${qid}"></div><div class="qi-url">${url.length>55 ? url.slice(0,52)+'…' : url}</div>`;
     grid.appendChild(div);
-    setTimeout(() => { try{ document.getElementById(qid).innerHTML = ''; new QRCode(document.getElementById(qid), { text:url, width:110, height:110, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M }); }catch(e){} }, 80);
+    setTimeout(() => {
+      try{
+        document.getElementById(qid).innerHTML = '';
+        new QRCode(document.getElementById(qid), { text:url, width:110, height:110, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M });
+      }catch(e){}
+    }, 80);
   });
 }
 
