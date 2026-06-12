@@ -1407,10 +1407,27 @@ async function renderGroupCompare(){
   const pick = document.getElementById('gcmp-pick')?.value;
   if(!pick){ area.innerHTML = '<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
   area.innerHTML = '<div class="section-empty">⏳ กำลังคำนวณ...</div>';
-  let dateFrom, dateTo;
-  if(groupCmpMode === 'day'){ dateFrom = pick; dateTo = pick; }
-  else if(groupCmpMode === 'month'){ const [y,m]=pick.split('-'); dateFrom=`${pick}-01`; dateTo=`${pick}-${String(new Date(parseInt(y),parseInt(m),0).getDate()).padStart(2,'0')}`; }
-  else { dateFrom=`${pick}-01-01`; dateTo=`${pick}-12-31`; }
+
+  let dateFrom, dateTo, targetPeriods;
+  if(groupCmpMode === 'day'){
+    dateFrom = pick;
+    // ✅ ดึงเผื่อ 7 วันถัดไป เพื่อให้มีค่าถัดไปมาคำนวณ used
+    const d = new Date(pick); d.setDate(d.getDate() + 7);
+    dateTo = d.toISOString().slice(0,10);
+    targetPeriods = [pick]; // แต่คิดแค่วันที่เลือก
+  } else if(groupCmpMode === 'month'){
+    const [y,m] = pick.split('-');
+    dateFrom = `${pick}-01`;
+    // เผื่อต้นเดือนถัดไป
+    const nd = new Date(parseInt(y), parseInt(m), 7);
+    dateTo = nd.toISOString().slice(0,10);
+    targetPeriods = null; // ทั้งเดือน
+  } else {
+    dateFrom = `${pick}-01-01`;
+    dateTo = `${parseInt(pick)+1}-01-07`; // เผื่อต้นปีถัดไป
+    targetPeriods = null;
+  }
+
   try{
     const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity:'day' });
     if(!res || !res.success) throw new Error(res?.error||'error');
@@ -1418,10 +1435,20 @@ async function renderGroupCompare(){
     const meterMap = {};
     raw.forEach(r => { if(!meterMap[r.subId]) meterMap[r.subId]={}; meterMap[r.subId][r.period]={firstKwh:r.firstKwh,lastKwh:r.lastKwh}; });
     const allPeriods = [...new Set(raw.map(r => r.period))].sort();
-    // ใช้ REPORT_MAIN (มี minus) ให้ตรงตาราง
+
+    // period ที่จะนับ: day = วันเดียว, month/year = เฉพาะที่อยู่ในช่วง pick
+    let countPeriods;
+    if(groupCmpMode === 'day'){
+      countPeriods = targetPeriods;
+    } else if(groupCmpMode === 'month'){
+      countPeriods = allPeriods.filter(p => p.startsWith(pick)); // 2026-06
+    } else {
+      countPeriods = allPeriods.filter(p => p.startsWith(pick)); // 2026
+    }
+
     const groupVals = REPORT_MAIN.map(col => {
       let total = 0;
-      allPeriods.forEach(p => {
+      countPeriods.forEach(p => {
         (col.ids||[]).forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null) total += u; });
         (col.minus||[]).forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null) total -= u; });
       });
@@ -1430,7 +1457,6 @@ async function renderGroupCompare(){
     drawGroupCompareBars(groupVals);
   }catch(e){ area.innerHTML = `<div class="warn-box">❌ ${e.message}</div>`; }
 }
-
 function drawGroupCompareBars(groupVals){
   const area = document.getElementById('group-cmp-area');
   const maxVal = Math.max(...groupVals.map(g => g.value), 1);
@@ -1459,8 +1485,8 @@ function getChartH(){
   const portrait = window.matchMedia('(orientation:portrait)').matches;
   let boxH;
   if(w >= 900)        boxH = 300;   // คอม
-  else if(portrait)   boxH = 240;   // มือถือตั้ง
-  else                boxH = 150;   // มือถือตะแคง
+  else if(portrait)   boxH = 260;   // มือถือตั้ง
+  else                boxH = 170;   // มือถือตะแคง
   return boxH - 24;  // เผื่อตัวเลข
 }
    
