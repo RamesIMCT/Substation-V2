@@ -258,6 +258,7 @@ tr:hover td{background:var(--surface-2)}
 .empty{text-align:center;padding:28px;color:var(--text-3)}
 .empty i{font-size:28px;display:block;margin-bottom:6px;font-style:normal}
 .section-empty{padding:14px;text-align:center;color:var(--text-3);font-size:var(--fs-sm)}
+.gcmp-mode-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 
 @media(max-width:480px){
   .panel{padding:10px 10px 90px}
@@ -572,10 +573,25 @@ tr:hover td{background:var(--surface-2)}
     </div>
     <div id="report-area"><div class="section-empty">📋 เลือกเดือนเพื่อดูรายงาน</div></div>
   </div>
-
+   
+<!-- ── เทียบการใช้ไฟ 9 กลุ่มหลัก ── -->
+  <div class="card">
+    <div class="card-title"> เทียบการใช้ไฟ 9 กลุ่มหลัก</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm gcmp-mode-btn active" id="gcmp-day" onclick="setGroupCmpMode('day')">รายวัน</button>
+      <button class="btn btn-ghost btn-sm gcmp-mode-btn" id="gcmp-month" onclick="setGroupCmpMode('month')">รายเดือน</button>
+      <button class="btn btn-ghost btn-sm gcmp-mode-btn" id="gcmp-year" onclick="setGroupCmpMode('year')">รายปี</button>
+    </div>
+    <div class="f-row">
+      <label class="f-label" id="gcmp-pick-label">เลือกวันที่</label>
+      <select class="f-input" id="gcmp-pick" onchange="renderGroupCompare()"></select>
+    </div>
+    <div id="group-cmp-area"><div class="section-empty">เลือกช่วงเพื่อเทียบ 9 กลุ่ม</div></div>
+  </div>
+   
   <!-- ── กราฟเทียบต่อกลุ่ม ── -->
   <div class="card">
-    <div class="card-title">📊 กราฟเทียบการใช้ไฟแต่ละกลุ่ม</div>
+    <div class="card-title"> กราฟเทียบการใช้ไฟแต่ละกลุ่ม</div>
     <div class="f-row">
       <label class="f-label">เลือกกลุ่ม</label>
       <select class="f-input" id="cmp-group" onchange="renderCompareChart()"></select>
@@ -821,6 +837,13 @@ let reportRaw              = [];
 let reportComputed         = null;
 let compareMode            = 'day';
 
+/* สีประจำ 9 group */
+const GROUP_COLORS = {
+  'BODY':'#00D4FF','PAINT':'#22C55E','LA':'#FACC15','UA':'#fb923c',
+  'PT7,8':'#a78bfa','FRAME':'#f472b6','OFFICE':'#38bdf8','FR':'#fb7185','OLD CANTEEN':'#4ade80'
+};
+let groupCmpMode = 'day';
+   
 /* ───────── UTILITIES ───────── */
 function jLoad(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
 function persist(){
@@ -1092,7 +1115,7 @@ function goTab(name){
   if(tabEl) tabEl.classList.add('active');
   if(name === 'data')     { renderData(); renderStats(); }
   if(name === 'chart')    { populateDDs(); setChartRange(30); renderAllChart(); }
-  if(name === 'summary')  { buildMonthOptions(); buildCompareGroupOptions(); loadReport(); }
+  if(name === 'summary')  { buildMonthOptions(); buildCompareGroupOptions(); loadReport(); buildGroupCmpPicker(); renderGroupCompare(); }
   if(name === 'qr')       { renderQR(); }
   if(name === 'settings') { renderSubList(); renderCalendarList(); }
 }
@@ -1342,6 +1365,87 @@ function drawCompareBars(points, unit){
     </div>`;
 }
 
+function setGroupCmpMode(mode){
+  groupCmpMode = mode;
+  document.querySelectorAll('.gcmp-mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('gcmp-'+mode)?.classList.add('active');
+  buildGroupCmpPicker();
+  renderGroupCompare();
+}
+
+function buildGroupCmpPicker(){
+  const sel = document.getElementById('gcmp-pick');
+  if(!sel) return;
+  const lbl = document.getElementById('gcmp-pick-label');
+  if(lbl) lbl.textContent = groupCmpMode==='day'?'เลือกวันที่':groupCmpMode==='month'?'เลือกเดือน':'เลือกปี';
+  let opts = [];
+  if(groupCmpMode === 'day'){
+    const days = [...new Set(records.map(r => String(r.date).slice(0,10)))].filter(Boolean).sort().reverse();
+    opts = days.map(d => ({ v:d, t:fmtDate(d) }));
+  } else if(groupCmpMode === 'month'){
+    const ms = [...new Set(records.map(r => String(r.date).slice(0,7)))].filter(Boolean).sort().reverse();
+    const MN = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    opts = ms.map(m => { const [y,mm]=m.split('-'); return { v:m, t:`${MN[parseInt(mm)]} ${y}` }; });
+  } else {
+    const ys = [...new Set(records.map(r => String(r.date).slice(0,4)))].filter(Boolean).sort().reverse();
+    opts = ys.map(y => ({ v:y, t:y }));
+  }
+  sel.innerHTML = opts.map(o => `<option value="${o.v}">${o.t}</option>`).join('');
+}
+
+async function renderGroupCompare(){
+  const area = document.getElementById('group-cmp-area');
+  const pick = document.getElementById('gcmp-pick')?.value;
+  if(!pick){ area.innerHTML = '<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
+  area.innerHTML = '<div class="section-empty">⏳ กำลังคำนวณ...</div>';
+  let dateFrom, dateTo;
+  if(groupCmpMode === 'day'){ dateFrom = pick; dateTo = pick; }
+  else if(groupCmpMode === 'month'){ const [y,m]=pick.split('-'); dateFrom=`${pick}-01`; dateTo=`${pick}-${String(new Date(parseInt(y),parseInt(m),0).getDate()).padStart(2,'0')}`; }
+  else { dateFrom=`${pick}-01-01`; dateTo=`${pick}-12-31`; }
+  try{
+    const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity:'day' });
+    if(!res || !res.success) throw new Error(res?.error||'error');
+    const raw = res.summary || [];
+    const meterMap = {};
+    raw.forEach(r => { if(!meterMap[r.subId]) meterMap[r.subId]={}; meterMap[r.subId][r.period]={firstKwh:r.firstKwh,lastKwh:r.lastKwh}; });
+    const allPeriods = [...new Set(raw.map(r => r.period))].sort();
+    // ใช้ REPORT_MAIN (มี minus) ให้ตรงตาราง
+    const groupVals = REPORT_MAIN.map(col => {
+      let total = 0;
+      allPeriods.forEach(p => {
+        (col.ids||[]).forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null) total += u; });
+        (col.minus||[]).forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null) total -= u; });
+      });
+      return { name: col.name, value: total };
+    });
+    drawGroupCompareBars(groupVals);
+  }catch(e){ area.innerHTML = `<div class="warn-box">❌ ${e.message}</div>`; }
+}
+
+function drawGroupCompareBars(groupVals){
+  const area = document.getElementById('group-cmp-area');
+  const maxVal = Math.max(...groupVals.map(g => g.value), 1);
+  const CHART_H = 170;
+  const bars = groupVals.map(g => {
+    const barH = Math.max(3, Math.round(Math.max(0,g.value)/maxVal*CHART_H));
+    const valStr = Math.round(g.value).toLocaleString();
+    const color = GROUP_COLORS[g.name] || 'var(--accent)';
+    return `<div class="vbar-col" style="flex:1;min-width:0" title="${g.name} — ${valStr} kWh">
+      <div class="vbar-val" style="font-size:8px">${valStr}</div>
+      <div class="vbar-space"><div class="vbar-bar" style="height:${barH}px;background:linear-gradient(180deg,${color},${color}88)"></div></div>
+      <div class="vbar-label" style="font-size:8px">${g.name}</div>
+    </div>`;
+  }).join('');
+  const total = groupVals.reduce((a,g)=>a+g.value,0);
+  const top = groupVals.reduce((a,g)=>g.value>a.value?g:a, groupVals[0]);
+  area.innerHTML = `
+    <div class="vbar-scroll"><div class="vbar-chart" style="min-width:100%">${bars}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="chip chip-green">⚡ รวม ${Math.round(total).toLocaleString()} kWh</span>
+      <span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">🏭 สูงสุด: ${top.name}</span>
+    </div>`;
+}
+   
 /* ════════════ WORK CALENDAR ════════════ */
 function getDayType(dateStr){
   const found = workCalendar.find(c => c.date === dateStr);
