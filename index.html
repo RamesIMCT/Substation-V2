@@ -201,7 +201,7 @@ tr:hover td{background:var(--surface-2)}
 .vbar-chart{display:flex;align-items:flex-end;gap:6px;min-width:max-content;padding:8px 4px 0}
 .vbar-col{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px}
 .vbar-val{font-size:9px;color:var(--green);font-weight:700;font-family:var(--font-mono);text-align:center;line-height:1.2}
-.vbar-space{display:flex;align-items:flex-end;height:190px;width:100%;position:relative}
+.vbar-space{display:flex;align-items:flex-end;height:220px;width:100%;position:relative}
 .vbar-bar{width:100%;background:linear-gradient(180deg,var(--green),var(--accent));border-radius:5px 5px 0 0;transition:height .55s cubic-bezier(.4,0,.2,1);min-height:3px}
 .vbar-label{font-size:8px;color:var(--text-3);text-align:center;line-height:1.5;font-family:var(--font-mono);word-break:keep-all;white-space:nowrap}
 .vbar-axis{display:flex;justify-content:space-between;align-items:center;padding:6px 4px 0;border-top:1px solid var(--border);margin-top:4px}
@@ -1342,7 +1342,7 @@ function drawCompareBars(points, unit){
   const area = document.getElementById('compare-area');
   if(!points.length){ area.innerHTML = '<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
   const maxVal = Math.max(...points.map(p => p.value), 1);
-  const CHART_H = 150;
+  const CHART_H = 170;
   const fitScreen = points.length <= 16;
   const bars = points.map(p => {
     const barH = Math.max(3, Math.round(Math.max(0,p.value)/maxVal*CHART_H));
@@ -1425,7 +1425,7 @@ async function renderGroupCompare(){
 function drawGroupCompareBars(groupVals){
   const area = document.getElementById('group-cmp-area');
   const maxVal = Math.max(...groupVals.map(g => g.value), 1);
-  const CHART_H = 150;
+  const CHART_H = 170;
   const bars = groupVals.map(g => {
     const barH = Math.max(3, Math.round(Math.max(0,g.value)/maxVal*CHART_H));
     const valStr = Math.round(g.value).toLocaleString();
@@ -1898,7 +1898,7 @@ function renderChart(){
   const items  = Object.values(byKey).sort((a,b) => a.key.localeCompare(b.key));
   const showItems = gran === 'day' ? items.slice(-31) : items;
   const maxVal = Math.max(...showItems.map(d => d.used), 1);
-  const CHART_H = 150;
+  const CHART_H = 170;
   const fitScreen = showItems.length <= 16;
   const bars = showItems.map(d => {
     const pct  = Math.max(0,d.used)/maxVal;
