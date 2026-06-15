@@ -829,9 +829,9 @@ const QR_BASE_URL = 'https://ramesimct.github.io/Substation-V2/';
 const ABNORMAL_MULTIPLIER = 5;
 
 /* ───────── STATE ───────── */
-let subs                   = jLoad('subs')     || [];
-let records                = jLoad('records')  || [];
-let workCalendar           = jLoad('calendar') || [];
+let subs                   = ('subs')     || [];
+let records                = ('records')  || [];
+let workCalendar           = ('calendar') || [];
 let filteredRecords        = [];
 let currentPage            = 1;
 let pageSize               = 15;
@@ -855,6 +855,16 @@ let groupCmpMode = 'day';
    
 /* ───────── UTILITIES ───────── */
 function jLoad(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+// escape HTML กัน XSS — ใช้ครอบทุกค่าที่ผู้ใช้กรอกก่อนใส่ innerHTML
+function esc(str){
+  if(str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 function persist(){
   localStorage.setItem('subs',     JSON.stringify(subs));
   localStorage.setItem('records',  JSON.stringify(records));
@@ -1525,7 +1535,7 @@ function renderCalendarList(){
   box.innerHTML = sorted.map(c => `<div class="sub-row">
     <div class="sub-row-info">
       <div class="sub-row-id" style="color:${c.type==='work'?'var(--green)':'var(--orange)'}">${fmtDate(c.date)} · ${c.type==='work'?'🟢 ทำงาน':'🔴 หยุด'}</div>
-      <div class="sub-row-meta">${c.note||'—'}</div>
+      <div class="sub-row-meta">${esc(c.note)||'—'}</div>
     </div>
     <div class="sub-row-actions"><button class="btn btn-danger btn-sm" onclick="removeCalendarDay('${c.date}')">🗑</button></div>
   </div>`).join('');
@@ -1580,7 +1590,7 @@ function renderTable(){
     <td class="td-sub">${r.subId}</td><td>${fmtDate(r.date)}</td><td>${fmtTime(r.time)}</td>
     <td class="td-kwh">${fmtNum(r.kwh, r.subId)}</td>
     <td class="td-used"><strong>${fmtNum(r.used||0, r.subId)}</strong></td>
-    <td class="desktop-only">${r.user||'—'}</td><td class="desktop-only">${r.note||'—'}</td>
+    <td class="desktop-only">${esc(r.user)||'—'}</td><td class="desktop-only">${esc(r.note)||'—'}</td>
     <td><div class="td-act">
       <button class="btn btn-primary btn-sm" onclick="openEdit('${r.id}')">✏️</button>
       <button class="btn btn-danger btn-sm"  onclick="deleteRecord('${r.id}')">🗑</button>
@@ -1683,7 +1693,7 @@ function renderRecent(){
     <td>${fmtDate(r.date)}</td><td>${fmtTime(r.time)}</td>
     <td class="td-kwh">${fmtNum(r.kwh, activeSub.id)}</td>
     <td class="td-used">${fmtNum(r.used||0, activeSub.id)}</td>
-    <td>${r.user||'—'}</td>
+    <td>${esc(r.user)||'—'}</td>
     <td><button class="btn btn-ghost btn-sm" onclick="openEdit('${r.id}')">✏️</button></td>
   </tr>`).join('');
 }
@@ -2030,7 +2040,7 @@ function renderSubList(){
     return `<div class="sub-row">
       <div class="sub-row-info">
         <div class="sub-row-id">${s.id}</div>
-        <div class="sub-row-meta">${s.name} · ${s.zone} · ${cnt} rec · ${Math.round(totalUsed).toLocaleString()} kWh</div>
+        <div class="sub-row-meta">${esc(s.name)} · ${esc(s.zone)} · ${cnt} rec · ${Math.round(totalUsed).toLocaleString()} kWh</div>
         <span class="sub-row-dec">ทศนิยม ${dec} · ×${s.multiplier||1}</span>
       </div>
       <div class="sub-row-actions">
