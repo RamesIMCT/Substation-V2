@@ -829,9 +829,9 @@ const QR_BASE_URL = 'https://ramesimct.github.io/Substation-V2/';
 const ABNORMAL_MULTIPLIER = 5;
 
 /* ───────── STATE ───────── */
-let subs                   = ('subs')     || [];
-let records                = ('records')  || [];
-let workCalendar           = ('calendar') || [];
+let subs                   = Array.isArray(jLoad('subs'))     ? jLoad('subs')     : [];
+let records                = Array.isArray(jLoad('records'))  ? jLoad('records')  : [];
+let workCalendar           = Array.isArray(jLoad('calendar')) ? jLoad('calendar') : [];
 let filteredRecords        = [];
 let currentPage            = 1;
 let pageSize               = 15;
@@ -1128,6 +1128,7 @@ function computeUsed(rawRecords){
 
 /* ════════════ INIT ════════════ */
 function init(){
+  if(!Array.isArray(subs)) subs = [];
   subs = subs.map(s => ({ ...s, decimal: s.decimal !== undefined ? s.decimal : 0 }));
   initTheme(); setNow();
   if(localStorage.getItem('loginMode') === 'basic'){ applyAppMode('basic'); closeLoginGate(); }
