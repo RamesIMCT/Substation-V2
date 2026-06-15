@@ -385,7 +385,7 @@ tr:hover td{background:var(--surface-2)}
         <div class="rec-badge" id="hdr-badge">0 rec</div>
         <div id="zone-areas"></div>
         <div class="btn-row" style="margin-top:12px">
-          <button class="btn btn-yellow btn-sm" onclick="loadFromServer()">🔄 Refresh</button>
+          <button class="btn btn-yellow btn-sm" id="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
         </div>
       </div>
     </div>
@@ -1059,10 +1059,39 @@ function loadFromServer(){
       if(data.records  && Array.isArray(data.records))  records      = computeUsed(data.records);
       if(data.calendar && Array.isArray(data.calendar)) workCalendar = data.calendar;
       persist(); isConnected = true; renderAll();
+      // ✅ ถ้ากำลังอยู่หน้ากรอก อัปเดตปุ่ม save ให้เป็นออนไลน์
+      if(activeSub){
+        const sb = document.getElementById('save-btn');
+        if(sb && !sb.disabled){ sb.innerHTML = '✅ บันทึกข้อมูล'; }
+      }
       console.log(`✅ Sync — ${subs.length} subs, ${records.length} records, ${workCalendar.length} cal`);
     })
     .catch(err => { console.warn('⚠️ โหลด Server ไม่ได้ ใช้ Cache:', err.message); isConnected = false; });
 }
+
+function refreshData(){
+  const btn = document.getElementById('refresh-btn');
+  if(btn){ btn.disabled = true; btn.innerHTML = '⏳ กำลังโหลด...'; }
+  setSyncStatus('busy','กำลังโหลดข้อมูล...');
+
+  fetch(API_URL)
+    .then(res => { if(!res.ok) throw new Error('Network error'); return res.json(); })
+    .then(data => {
+      if(!data || data.status === 'error') throw new Error(data?.message || 'Server error');
+      if(data.subs     && Array.isArray(data.subs))     subs         = data.subs;
+      if(data.records  && Array.isArray(data.records))  records      = computeUsed(data.records);
+      if(data.calendar && Array.isArray(data.calendar)) workCalendar = data.calendar;
+      persist(); isConnected = true; renderAll();
+      setSyncStatus('ok',`โหลดสำเร็จ — ${subs.length} ตู้`);
+    })
+    .catch(err => {
+      setSyncStatus('error','โหลดไม่ได้: ' + err.message);
+    })
+    .finally(() => {
+      if(btn){ btn.disabled = false; btn.innerHTML = '🔄 Refresh'; }
+    });
+}
+
 async function testConn(){
   setSyncStatus('busy','กำลังทดสอบ...');
   const box = document.getElementById('api-status');
@@ -1602,6 +1631,14 @@ function renderTable(){
 function renderZoneAreas(){
   const container = document.getElementById('zone-areas');
   container.innerHTML = '';
+   if(!subs.length){
+    container.innerHTML = `<div class="section-empty" style="padding:30px">
+      <div style="font-size:24px;margin-bottom:8px">⏳</div>
+      กำลังโหลดรายการตู้...<br>
+      <small style="color:var(--text-3)">ถ้าค้างนาน กด Refresh</small>
+    </div>`;
+    return;
+  }
   const grouped = {};
   LOAD_CATEGORIES.forEach(c => grouped[c.name] = []);
   subs.forEach(s => { const cat = getCategoryOf(s.id); if(!grouped[cat]) grouped[cat]=[]; grouped[cat].push(s); });
@@ -1844,10 +1881,10 @@ async function saveEditSub(){
   if(editSubIndex === null) return;
   const name       = document.getElementById('esub-name').value.trim();
   const zone       = document.getElementById('esub-zone').value.trim();
-  const decimal    = parseInt(document.getElementById('esub-decimal').value)    || 0;
-  const multiplier = parseFloat(document.getElementById('esub-multiplier').value) || 1;
+  const decimal    = parseInt(document.getElementById('esub-decimal').value) || 0;
+  const multiplier = parseFloat(document.getElementById('esub-multiplier').value);  // ✅ ไม่ใส่ || 1
   if(!name || !zone) return toast('⚠️ กรุณากรอกชื่อตู้และ Zone ให้ครบ','err');
-  if(multiplier <= 0) return toast('⚠️ ตัวคูณต้องมากกว่า 0','err');
+  if(!isFinite(multiplier) || multiplier <= 0) return toast('⚠️ ตัวคูณต้องมากกว่า 0','err');  // ✅ เช็ค NaN ด้วย
   const updatedSub = { ...subs[editSubIndex], name, zone, decimal, multiplier };
   subs[editSubIndex] = updatedSub; persist(); closeEditSub();
   records = computeUsed(records); persist();
