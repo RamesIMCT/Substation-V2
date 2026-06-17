@@ -1440,6 +1440,9 @@ function buildGroupCmpPicker(){
     opts = ys.map(y => ({ v:y, t:y }));
   }
   sel.innerHTML = opts.map(o => `<option value="${o.v}">${o.t}</option>`).join('');
+  if(groupCmpMode === 'day' && opts.length >= 2){
+    sel.value = opts[1].v;
+  }
 }
 
 async function renderGroupCompare(){
