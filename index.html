@@ -455,7 +455,7 @@ tr:hover td{background:var(--surface-2)}
       </div>
 
       <div class="card">
-        <div class="card-title">📝 บันทึกค่ามิเตอร์ใหม่</div>
+        <div class="card-title"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></i>บันทึกค่ามิเตอร์ใหม่</div>
         <div class="f-row">
           <label class="f-label">📟 ค่าที่อ่านได้ (kWh สะสม)</label>
           <input class="f-input kwh-input" type="number" id="in-kwh" placeholder="0" step="1" inputmode="decimal" oninput="previewUsed()">
@@ -566,7 +566,7 @@ tr:hover td{background:var(--surface-2)}
   <!-- CHART -->
   <div class="panel" id="panel-chart">
     <div class="card">
-      <div class="card-title">📈 การใช้ไฟรายวัน (kWh/วัน)</div>
+      <div class="card-title"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg></i> การใช้ไฟรายวัน (kWh/วัน)</div>
       <div class="f-row">
         <label class="f-label">เลือก Substation</label>
         <select class="f-input" id="chart-sub" onchange="renderChart()"><option value="">เลือก Sub...</option></select>
@@ -650,7 +650,7 @@ tr:hover td{background:var(--surface-2)}
   <!-- QR -->
   <div class="panel" id="panel-qr">
     <div class="card">
-      <div class="card-title">🔲 QR Code ทุก Substation</div>
+      <div class="card-title"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v.01M14 21h.01M17 21h4v-4"/></svg></i> QR Code ทุก Substation</div>
       <div class="info-box">
         <strong>Base URL:</strong> <span style="font-family:var(--font-mono);font-size:9px;color:var(--accent)" id="qr-url-preview">—</span><br>
         <small style="color:var(--text-3)">สแกน QR เปิดตู้ได้ทันที</small>
@@ -702,7 +702,7 @@ tr:hover td{background:var(--surface-2)}
 
     <div class="card">
       <div class="card-title">📋 รายการ Substation (<span id="sub-count">0</span>)</div>
-      <div class="info-box" style="margin-bottom:8px">กด ✏️ เพื่อแก้ไขชื่อ, Zone, ทศนิยม และตัวคูณ</div>
+      <div class="info-box" style="margin-bottom:8px">กด <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></i> เพื่อแก้ไขชื่อ, Zone, ทศนิยม และตัวคูณ</div>
       <div id="sub-list"></div>
     </div>
      
@@ -744,7 +744,7 @@ tr:hover td{background:var(--surface-2)}
 <div class="modal-bg" id="edit-modal" onclick="closeEditIf(event)">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-head">✏️ แก้ไขรายการ<button class="modal-close" onclick="closeEdit()">✕</button></div>
+    <div class="modal-head"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></i> แก้ไขรายการ<button class="modal-close" onclick="closeEdit()">✕</button></div>
     <div class="warn-box">⚠️ การแก้ไขค่ามิเตอร์จะกระทบค่า "ใช้ไป" ของรายการถัดไป</div>
     <div class="f-row"><label class="f-label">Substation</label><select class="f-input" id="edit-sub"></select></div>
     <div class="f-row"><label class="f-label">ค่ามิเตอร์ (kWh สะสม)</label><input class="f-input kwh-input" type="number" id="edit-kwh" step="1" inputmode="decimal"></div>
@@ -765,7 +765,7 @@ tr:hover td{background:var(--surface-2)}
 <div class="modal-bg" id="edit-sub-modal" onclick="closeEditSubIf(event)">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-head">✏️ แก้ไข Substation<button class="modal-close" onclick="closeEditSub()">✕</button></div>
+    <div class="modal-head"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></i> แก้ไข Substation<button class="modal-close" onclick="closeEditSub()">✕</button></div>
     <div class="f-row">
       <label class="f-label">Sub ID (ไม่สามารถเปลี่ยนได้)</label>
       <input class="f-input" id="esub-id" disabled>
