@@ -1192,18 +1192,35 @@ function init(){
   document.getElementById('qr-url-preview').textContent = QR_BASE_URL + '?sub=SUB-XX';
   const p = new URLSearchParams(location.search).get('sub');
   if(p){
-    if(document.getElementById('login-gate').style.display !== 'none'){
-      applyAppMode('basic'); localStorage.setItem('loginMode','basic'); closeLoginGate();
-    }
+    // เข้าโหมด basic ทันที (QR = คนจดมิเตอร์)
+    applyAppMode('basic');
+    localStorage.setItem('loginMode','basic');
+    closeLoginGate();
     goTab('entry');
-    setTimeout(() => {
-      const found = subs.find(s => s.id === p.toUpperCase());
-      if(found){ selectSub(found.id); toast('📍 เปิด ' + found.id + ' จาก QR','ok'); }
-      else toast('ไม่พบ Sub: ' + p,'err');
-    }, 300);
   }
   loadFromServer();
+
+  // ✅ เปิดตู้จาก QR หลัง subs โหลดเสร็จ (รอได้สูงสุด ~8 วิ)
+  if(p){
+    openSubFromQR(p.toUpperCase(), 0);
+  }
 }
+
+// ── เปิดตู้จาก QR: รอจน subs พร้อมก่อน ──
+function openSubFromQR(subId, tries){
+  const found = subs.find(s => s.id === subId);
+  if(found){
+    selectSub(found.id);
+    toast('📍 เปิด ' + found.id + ' จาก QR','ok');
+    return;
+  }
+  if(tries < 40){            // ลองซ้ำ 40 ครั้ง × 200ms = 8 วินาที
+    setTimeout(() => openSubFromQR(subId, tries+1), 200);
+  } else {
+    toast('ไม่พบ Sub: ' + subId + ' (ลองรีเฟรช)','err');
+  }
+}
+
 function renderAll(){
   renderZoneAreas(); renderData(); renderStats(); populateDDs(); updateBadge();
   if(activeSub){ updateMeterSummary(); renderRecent(); }
