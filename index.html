@@ -308,7 +308,19 @@ tr:hover td{background:var(--surface-2)}
 }
 .hdr-logo svg{width:18px;height:18px;color:var(--btn-pri-text)}
 .theme-btn svg{width:16px;height:16px;display:block}
-.hdr-sub svg{width:12px;height:12px;display:inline-block;vertical-align:-1px;margin-right:2px}   
+.hdr-sub svg{width:12px;height:12px;display:inline-block;vertical-align:-1px;margin-right:2px}
+i svg{
+  width:1em;
+  height:1em;
+  display:inline-block;
+  vertical-align:-0.12em;
+}
+.modal-head i svg,.card-title i svg{
+  width:18px;
+  height:18px;
+  vertical-align:-3px;
+  margin-right:2px;
+}
    
 </style>
 </head>
@@ -1026,8 +1038,13 @@ function applyAppMode(mode){
   const tabsBar = document.getElementById('tabs-bar');
   if(tabsBar) tabsBar.className = mode === 'admin' ? 'tabs admin-mode' : 'tabs basic-mode';
   const hdrSmall = document.getElementById('hdr-small');
-  if(hdrSmall) hdrSmall.textContent = mode === 'admin' ? `👑 แอดมิน: ${currentUser}` : '📝 โหมดบันทึก';
-}
+  if(hdrSmall){
+    if(mode === 'admin'){
+      hdrSmall.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;display:inline-block;vertical-align:-1px;margin-right:3px"><path d="m2 7 4.5 4.5L12 5l5.5 6.5L22 7v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1Z"/></svg>แอดมิน: ${esc(currentUser)}`;
+    } else {
+      hdrSmall.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;display:inline-block;vertical-align:-1px;margin-right:3px"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>โหมดบันทึก`;
+    }
+  }
 
 /* ════════════ THEME ════════════ */
 function initTheme(){
