@@ -299,6 +299,13 @@ tr:hover td{background:var(--surface-2)}
 }
 .cmp-mode-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
    
+.tab i svg{
+  width:18px;
+  height:18px;
+  display:block;
+  margin:0 auto 2px;
+}
+   
 </style>
 </head>
 <body>
@@ -366,14 +373,25 @@ tr:hover td{background:var(--surface-2)}
   <span id="sync-msg">กำลังโหลด...</span>
 </div>
 
-<!-- TABS -->
 <div class="tabs basic-mode" id="tabs-bar">
-  <div class="tab active" onclick="goTab('entry')"><i>📝</i>บันทึก</div>
-  <div class="tab" onclick="goTab('data')"><i>📊</i>ข้อมูล</div>
-  <div class="tab admin-tab" onclick="goTab('chart')"><i>📈</i>กราฟ</div>
-  <div class="tab admin-tab" onclick="goTab('summary')"><i>📋</i>สรุป</div>
-  <div class="tab admin-tab" onclick="goTab('qr')"><i>🔲</i>QR</div>
-  <div class="tab admin-tab" onclick="goTab('settings')"><i>⚙️</i>ตั้งค่า</div>
+  <div class="tab active" onclick="goTab('entry')">
+    <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></i>บันทึก
+  </div>
+  <div class="tab" onclick="goTab('data')">
+    <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></i>ข้อมูล
+  </div>
+  <div class="tab admin-tab" onclick="goTab('chart')">
+    <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg></i>กราฟ
+  </div>
+  <div class="tab admin-tab" onclick="goTab('summary')">
+    <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg></i>สรุป
+  </div>
+  <div class="tab admin-tab" onclick="goTab('qr')">
+    <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v.01M14 21h.01M17 21h4v-4"/></svg></i>QR
+  </div>
+  <div class="tab admin-tab" onclick="goTab('settings')">
+    <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></i>ตั้งค่า
+  </div>
 </div>
 
 <div class="body">
