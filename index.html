@@ -306,6 +306,9 @@ tr:hover td{background:var(--surface-2)}
   display:block;
   margin:0 auto 2px;
 }
+.hdr-logo svg{width:18px;height:18px;color:var(--btn-pri-text)}
+.theme-btn svg{width:16px;height:16px;display:block}
+.hdr-sub svg{width:12px;height:12px;display:inline-block;vertical-align:-1px;margin-right:2px}   
    
 </style>
 </head>
@@ -356,18 +359,29 @@ tr:hover td{background:var(--surface-2)}
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="hdr-logo">⚡</div>
+  <div class="hdr-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/>
+    </svg>
+  </div>
   <div class="hdr-text">
     <div class="hdr-title">Substation SR Plant</div>
+    <!-- [1] มงกุฎ 👑 → SVG (จะถูกใส่/เอาออกโดย applyAppMode) -->
     <div class="hdr-sub" id="hdr-small">กำลังโหลด...</div>
   </div>
   <div class="hdr-right">
-     <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
-     <!-- ✅ ปุ่มสลับโหมด/ออกจากระบบ -->
-     <button class="theme-btn" id="logout-btn" onclick="logout()" title="สลับโหมด/ออกจากระบบ">🔄</button>
-     <div class="sync-dot" id="sync-dot"></div>
-   </div>
+    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
+    <button class="theme-btn" id="logout-btn" onclick="logout()" title="สลับโหมด/ออกจากระบบ">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <path d="m16 17 5-5-5-5"/>
+        <path d="M21 12H9"/>
+      </svg>
+    </button>
+    <div class="sync-dot" id="sync-dot"></div>
+  </div>
 </div>
+   
 
 <div class="sync-banner" id="sync-banner">
   <span id="sync-icon">⏳</span>
@@ -1026,7 +1040,12 @@ function initTheme(){
 }
 function setTheme(t){
   document.documentElement.setAttribute('data-theme', t);
-  document.getElementById('theme-btn').textContent = t === 'dark' ? '☀️' : '🌙';
+  const btn = document.getElementById('theme-btn');
+  if(btn){
+    btn.innerHTML = t === 'dark'
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+  }
 }
 function toggleTheme(){
   const cur = document.documentElement.getAttribute('data-theme');
