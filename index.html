@@ -535,6 +535,15 @@ i svg{
           <input class="f-input" type="date" id="fl-to">
         </div>
       </div>
+      <div class="f-row" style="margin-top:6px">
+        <label class="f-label">เรียงตาม</label>
+        <select class="f-input" id="fl-sort" onchange="applyFilter()">
+          <option value="newest" selected>ล่าสุดที่กรอก</option>
+          <option value="date-desc">วันที่ใหม่→เก่า</option>
+          <option value="date-asc">วันที่เก่า→ใหม่</option>
+          <option value="sub-asc">Substation A→Z</option>
+        </select>
+      </div>
       <div class="btn-row">
         <button class="btn btn-primary btn-sm" onclick="applyFilter()">🔍 กรอง</button>
         <button class="btn btn-ghost btn-sm" onclick="clearFilter()">✖ ล้าง</button>
@@ -1983,18 +1992,31 @@ function applyFilter(){
   const userVal  = document.getElementById('fl-user')?.value.trim().toLowerCase() || '';
   const startVal = document.getElementById('fl-from').value;
   const endVal   = document.getElementById('fl-to').value;
+  const sortVal  = document.getElementById('fl-sort')?.value || 'newest';
   activeFilter = { sub:subVal, user:userVal, from:startVal, to:endVal };
-  filteredRecords = [...records].reverse().filter(r => {
+  filteredRecords = records.filter(r => {
     if(subVal   && r.subId !== subVal) return false;
     if(userVal  && !String(r.user).toLowerCase().includes(userVal)) return false;
     if(startVal && r.date < startVal)  return false;
     if(endVal   && r.date > endVal)    return false;
     return true;
   });
+  // เรียงลำดับตามที่เลือก
+  if(sortVal === 'newest'){
+    filteredRecords.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+  } else if(sortVal === 'date-desc'){
+    filteredRecords.sort((a,b) => (`${b.date} ${b.time||'00:00'}`).localeCompare(`${a.date} ${a.time||'00:00'}`));
+  } else if(sortVal === 'date-asc'){
+    filteredRecords.sort((a,b) => (`${a.date} ${a.time||'00:00'}`).localeCompare(`${b.date} ${b.time||'00:00'}`));
+  } else if(sortVal === 'sub-asc'){
+    filteredRecords.sort((a,b) => a.subId.localeCompare(b.subId) || (`${b.date} ${b.time||'00:00'}`).localeCompare(`${a.date} ${a.time||'00:00'}`));
+  }
   currentPage = 1; renderTable();
 }
 function clearFilter(){
   ['fl-sub','fl-user','fl-from','fl-to'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const sortEl = document.getElementById('fl-sort');
+  if(sortEl) sortEl.value = 'newest';
   applyFilter();
 }
 function populateDDs(){
