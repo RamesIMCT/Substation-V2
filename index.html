@@ -2236,7 +2236,7 @@ function renderSubChart(){
   var chartColors = [TC.green];
   var strokeW = subChartState.type==='bar' ? [0] : [2.5];
   var strokeDash = [0];
-   
+
   if(subChartState.showAvg){
     var avgRound = Math.round(avg);
     series.push({ name:'ค่าเฉลี่ย', data:data.map(function(){return avgRound;}), type:'line' });
@@ -2245,30 +2245,24 @@ function renderSubChart(){
     strokeDash = [0,5];
   }
 
-  var base = apexBase(TC);
-  var opts = JSON.parse(JSON.stringify(base));
-
-  // Ensure opts.chart is an object, even if base.chart was missing
-  opts.chart = opts.chart || {};
-
-  // Safely assign properties, using fallbacks if base.chart is missing
-  opts.chart.type = subChartState.type === 'bar' ? 'bar' : 'line';
-  opts.chart.height = 340;
-  opts.chart.fontFamily = (base.chart && base.chart.fontFamily) ? base.chart.fontFamily : 'Arial';
-  opts.chart.foreColor = (base.chart && base.chart.foreColor) ? base.chart.foreColor : '#373d3f';
-  opts.chart.toolbar = (base.chart && base.chart.toolbar) ? base.chart.toolbar : { show: true };
-  opts.chart.background = 'transparent';
-  opts.chart.animations = { enabled: true, speed: 400 };
-  opts.series = series;
-  opts.xaxis.categories = labels;
-  opts.colors = subChartState.period==='day' && subChartState.showHol ? colors : chartColors;
-  opts.plotOptions = { bar:{ borderRadius:4, columnWidth:'70%', distributed: subChartState.period==='day' && subChartState.showHol } };
-  opts.stroke = { width:strokeW, dashArray:strokeDash };
-  opts.fill = { opacity: subChartState.type==='bar' ? 0.7 : 0.1 };
-  opts.legend = { show: subChartState.showAvg && !(subChartState.period==='day' && subChartState.showHol), fontSize:'11px', labels:{colors:TC.text2} };
-
-   console.log("DEBUG: Current Period is:", subChartState.period);
-   console.log("DEBUG: opts object is:", opts);
+  var distributed = subChartState.period==='day' && subChartState.showHol;
+  var opts = {
+    chart:{ type:subChartState.type==='bar'?'bar':'line', height:340, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
+      toolbar:{ show:true, tools:{download:true,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true} },
+      background:'transparent', animations:{enabled:true,speed:400} },
+    series: series,
+    xaxis:{ categories:labels, axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{style:{fontSize:'10px',colors:TC.text3}} },
+    yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
+    grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
+    tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:function(v){return v!=null?Math.round(v).toLocaleString()+' kWh':'—';}} },
+    colors: distributed ? colors : chartColors,
+    plotOptions:{ bar:{borderRadius:4,columnWidth:'70%',distributed:distributed} },
+    stroke:{ width:strokeW, dashArray:strokeDash },
+    fill:{ opacity:subChartState.type==='bar'?0.7:0.1 },
+    legend:{ show:subChartState.showAvg&&!distributed, fontSize:'11px', labels:{colors:TC.text2}, markers:{shape:'square',size:6} },
+    dataLabels:{ enabled:false },
+    states:{ hover:{filter:{type:'lighten',value:0.08}} }
+  };
 
   if(subChartInst) subChartInst.destroy();
   el.innerHTML = '';
@@ -2401,24 +2395,25 @@ async function renderG9Chart(){
     var total = groupVals.reduce(function(a,g){return a+g.value;},0);
     var top = groupVals.reduce(function(a,g){return g.value>a.value?g:a;}, groupVals[0]);
 
-    var base = apexBase(TC);
-    var opts = JSON.parse(JSON.stringify(base));
-    opts.chart.type = 'bar';
-    opts.chart.height = 320;
-    opts.chart.fontFamily = base.chart.fontFamily;
-    opts.chart.foreColor = base.chart.foreColor;
-    opts.chart.toolbar = base.chart.toolbar;
-    opts.chart.background = 'transparent';
-    opts.series = [{ name:'ใช้ไฟ (kWh)', data:groupVals.map(function(g){return Math.round(g.value);}) }];
-    opts.xaxis.categories = groupVals.map(function(g){return g.name;});
-    opts.xaxis.labels = { style:{fontSize:'9px',colors:TC.text3} };
-    opts.colors = groupVals.map(function(g){return g.color;});
-    opts.plotOptions = { bar:{ borderRadius:6, columnWidth:'65%', distributed:true } };
-    opts.fill = { opacity:0.7 };
-    opts.legend = { show:false };
-    if(g9State.showPct){
-      opts.tooltip.y = { formatter:function(v){ return Math.round(v).toLocaleString()+' kWh ('+(total>0?((v/total)*100).toFixed(1):'0')+'%)'; } };
-    }
+    var tooltipFmt = g9State.showPct
+      ? function(v){ return Math.round(v).toLocaleString()+' kWh ('+(total>0?((v/total)*100).toFixed(1):'0')+'%)'; }
+      : function(v){ return v!=null?Math.round(v).toLocaleString()+' kWh':'—'; };
+    var opts = {
+      chart:{ type:'bar', height:320, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
+        toolbar:{ show:true, tools:{download:true,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true} },
+        background:'transparent', animations:{enabled:true,speed:400} },
+      series:[{ name:'ใช้ไฟ (kWh)', data:groupVals.map(function(g){return Math.round(g.value);}) }],
+      xaxis:{ categories:groupVals.map(function(g){return g.name;}), axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{style:{fontSize:'9px',colors:TC.text3}} },
+      yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
+      grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
+      tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:tooltipFmt} },
+      colors:groupVals.map(function(g){return g.color;}),
+      plotOptions:{ bar:{borderRadius:6,columnWidth:'65%',distributed:true} },
+      fill:{ opacity:0.7 },
+      legend:{ show:false },
+      dataLabels:{ enabled:false },
+      states:{ hover:{filter:{type:'lighten',value:0.08}} }
+    };
 
     if(g9ChartInst) g9ChartInst.destroy();
     el.innerHTML = '';
@@ -2524,20 +2519,23 @@ async function renderCmpChart(){
       strokeDash = [0,5];
     }
 
-    var base = apexBase(TC);
-    var opts = JSON.parse(JSON.stringify(base));
-    opts.chart.type = cmpState.type==='bar' ? 'bar' : 'line';
-    opts.chart.height = 340;
-    opts.chart.fontFamily = base.chart.fontFamily;
-    opts.chart.foreColor = base.chart.foreColor;
-    opts.chart.toolbar = base.chart.toolbar;
-    opts.chart.background = 'transparent';
-    opts.series = series;
-    opts.xaxis.categories = labels;
-    opts.colors = chartColors;
-    opts.plotOptions = { bar:{ borderRadius:4, columnWidth:'70%' } };
-    opts.stroke = { width:strokeW, dashArray:strokeDash };
-    opts.fill = { opacity: cmpState.type==='bar' ? 0.6 : 0.1 };
+    var opts = {
+      chart:{ type:cmpState.type==='bar'?'bar':'line', height:340, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
+        toolbar:{ show:true, tools:{download:true,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true} },
+        background:'transparent', animations:{enabled:true,speed:400} },
+      series: series,
+      xaxis:{ categories:labels, axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{style:{fontSize:'10px',colors:TC.text3}} },
+      yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
+      grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
+      tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:function(v){return v!=null?Math.round(v).toLocaleString()+' kWh':'—';}} },
+      colors: chartColors,
+      plotOptions:{ bar:{borderRadius:4,columnWidth:'70%'} },
+      stroke:{ width:strokeW, dashArray:strokeDash },
+      fill:{ opacity:cmpState.type==='bar'?0.6:0.1 },
+      legend:{ fontSize:'11px', labels:{colors:TC.text2}, markers:{shape:'square',size:6} },
+      dataLabels:{ enabled:false },
+      states:{ hover:{filter:{type:'lighten',value:0.08}} }
+    };
 
     if(cmpChartInst) cmpChartInst.destroy();
     el.innerHTML = '';
