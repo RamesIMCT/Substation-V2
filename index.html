@@ -2263,7 +2263,7 @@ function renderSubChart(){
     colors: useDistributed ? colors : chartColors,
     plotOptions:{ bar:{borderRadius:4,columnWidth:'70%',distributed:useDistributed} },
     stroke:{ width:strokeW, dashArray:strokeDash },
-    fill:{ opacity:chartType==='bar'?0.7:0.1 },
+    fill:{ opacity:chartType==='bar'?0.7:0.8 },
     legend:{ show:series.length>1, fontSize:'11px', labels:{colors:TC.text2}, markers:{shape:'square',size:6} },
     dataLabels:{ enabled:false },
     states:{ hover:{filter:{type:'lighten',value:0.08}} }
