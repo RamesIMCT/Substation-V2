@@ -2247,13 +2247,18 @@ function renderSubChart(){
 
   var base = apexBase(TC);
   var opts = JSON.parse(JSON.stringify(base));
-  opts.chart.type = subChartState.type==='bar' ? 'bar' : 'line';
+
+  // Ensure opts.chart is an object, even if base.chart was missing
+  opts.chart = opts.chart || {};
+
+  // Safely assign properties, using fallbacks if base.chart is missing
+  opts.chart.type = subChartState.type === 'bar' ? 'bar' : 'line';
   opts.chart.height = 340;
-  opts.chart.fontFamily = base.chart.fontFamily;
-  opts.chart.foreColor = base.chart.foreColor;
-  opts.chart.toolbar = base.chart.toolbar;
+  opts.chart.fontFamily = (base.chart && base.chart.fontFamily) ? base.chart.fontFamily : 'Arial';
+  opts.chart.foreColor = (base.chart && base.chart.foreColor) ? base.chart.foreColor : '#373d3f';
+  opts.chart.toolbar = (base.chart && base.chart.toolbar) ? base.chart.toolbar : { show: true };
   opts.chart.background = 'transparent';
-  opts.chart.animations = { enabled:true, speed:400 };
+  opts.chart.animations = { enabled: true, speed: 400 };
   opts.series = series;
   opts.xaxis.categories = labels;
   opts.colors = subChartState.period==='day' && subChartState.showHol ? colors : chartColors;
