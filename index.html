@@ -2236,7 +2236,7 @@ function renderSubChart(){
   var chartColors = [TC.green];
   var strokeW = subChartState.type==='bar' ? [0] : [2.5];
   var strokeDash = [0];
-
+   
   if(subChartState.showAvg){
     var avgRound = Math.round(avg);
     series.push({ name:'ค่าเฉลี่ย', data:data.map(function(){return avgRound;}), type:'line' });
@@ -2261,6 +2261,9 @@ function renderSubChart(){
   opts.stroke = { width:strokeW, dashArray:strokeDash };
   opts.fill = { opacity: subChartState.type==='bar' ? 0.7 : 0.1 };
   opts.legend = { show: subChartState.showAvg && !(subChartState.period==='day' && subChartState.showHol), fontSize:'11px', labels:{colors:TC.text2} };
+
+   console.log("DEBUG: Current Period is:", subChartState.period);
+   console.log("DEBUG: opts object is:", opts);
 
   if(subChartInst) subChartInst.destroy();
   el.innerHTML = '';
