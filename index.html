@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/5.3.5/apexcharts.min.js"></script>
 <style>
 /* ══════════════════════════════════════════════════════
    DESIGN TOKENS
@@ -322,6 +323,25 @@ i svg{
   margin-right:2px;
 }
    
+
+/* ── ApexCharts Controls ── */
+.chart-ctrl{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;background:var(--surface-2);border-radius:10px;border:1px solid var(--border);margin-bottom:8px;align-items:center}
+.chart-ctrl-label{font-size:9px;color:var(--text-3);margin-right:4px;white-space:nowrap}
+.ctrl-btn{padding:5px 10px;border-radius:8px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-3);transition:all .15s;white-space:nowrap;font-family:var(--font-body)}
+.ctrl-btn:hover{border-color:var(--border-hi);color:var(--text-2)}
+.ctrl-btn.on{border-color:rgba(0,212,255,.4);background:rgba(0,212,255,.12);color:var(--accent)}
+.ctrl-btn.green{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.12);color:var(--green)}
+.ctrl-btn.yellow{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.12);color:var(--yellow)}
+.ctrl-sep{width:1px;background:var(--border);margin:0 2px;align-self:stretch;min-height:20px}
+.ctrl-date{padding:4px 6px;border-radius:7px;font-size:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-1);outline:none;font-family:var(--font-mono);min-width:120px}
+.ctrl-date:focus{border-color:var(--accent)}
+.ctrl-nav{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px}
+.ctrl-nav:hover{background:var(--surface-3)}
+.chart-container{min-height:320px;position:relative}
+.apexcharts-tooltip{font-family:var(--font-mono)!important;font-size:12px!important}
+.apexcharts-menu{background:var(--surface-2)!important;border-color:var(--border)!important}
+.apexcharts-menu-item:hover{background:var(--surface-3)!important}
+
 </style>
 </head>
 <body>
@@ -587,24 +607,40 @@ i svg{
   <!-- CHART -->
   <div class="panel" id="panel-chart">
     <div class="card">
-      <div class="card-title"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg></i> การใช้ไฟรายวัน (kWh/วัน)</div>
+      <div class="card-title"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg></i> การใช้ไฟรายวัน (kWh)</div>
       <div class="f-row">
         <label class="f-label">เลือก Substation</label>
-        <select class="f-input" id="chart-sub" onchange="renderChart()"><option value="">เลือก Sub...</option></select>
+        <select class="f-input" id="chart-sub" onchange="renderSubChart()"><option value="">เลือก Sub...</option></select>
       </div>
-       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="btn btn-ghost btn-sm" onclick="setChartRange(7)">7 วัน</button>
-        <button class="btn btn-ghost btn-sm" onclick="setChartRange(30)">30 วัน</button>
-        <button class="btn btn-ghost btn-sm" onclick="setChartRange(90)">90 วัน</button>
-        <button class="btn btn-ghost btn-sm" onclick="setChartRange(0)">ทั้งหมด</button>
+      <div class="chart-ctrl">
+        <span class="chart-ctrl-label">ช่วงเร็ว:</span>
+        <button class="ctrl-btn yellow" onclick="setSubQuick('7d')">7 วัน</button>
+        <button class="ctrl-btn yellow" onclick="setSubQuick('30d')">30 วัน</button>
+        <button class="ctrl-btn yellow" onclick="setSubQuick('thisM')">เดือนนี้</button>
+        <button class="ctrl-btn yellow" onclick="setSubQuick('lastM')">เดือนก่อน</button>
+        <button class="ctrl-btn yellow" onclick="setSubQuick('3m')">3 เดือน</button>
+        <button class="ctrl-btn yellow" onclick="setSubQuick('all')">ทั้งหมด</button>
       </div>
-      <div class="f-2col">
-        <div class="f-row"><label class="f-label">จากวันที่</label><input class="f-input" type="date" id="chart-from" onchange="renderChart()"></div>
-        <div class="f-row"><label class="f-label">ถึงวันที่</label><input class="f-input" type="date" id="chart-to" onchange="renderChart()"></div>
+      <div class="chart-ctrl">
+        <span class="chart-ctrl-label">จาก:</span>
+        <input class="ctrl-date" type="date" id="sub-from" onchange="renderSubChart()">
+        <span class="chart-ctrl-label">ถึง:</span>
+        <input class="ctrl-date" type="date" id="sub-to" onchange="renderSubChart()">
       </div>
-       
-      <div id="chart-area"><div class="section-empty">เลือก Substation เพื่อดูกราฟ</div></div>
-      <div id="chart-summary" style="margin-top:10px"></div>
+      <div class="chart-ctrl">
+        <span class="chart-ctrl-label">มุมมอง:</span>
+        <button class="ctrl-btn green" id="sub-p-day" onclick="setSubPeriod('day')">รายวัน</button>
+        <button class="ctrl-btn" id="sub-p-month" onclick="setSubPeriod('month')">รายเดือน</button>
+        <button class="ctrl-btn" id="sub-p-year" onclick="setSubPeriod('year')">รายปี</button>
+        <div class="ctrl-sep"></div>
+        <button class="ctrl-btn on" id="sub-avg" onclick="toggleSubOpt('avg')">เส้นเฉลี่ย</button>
+        <button class="ctrl-btn on" id="sub-hol" onclick="toggleSubOpt('hol')">แยกสีวันหยุด</button>
+        <div class="ctrl-sep"></div>
+        <button class="ctrl-btn green" id="sub-t-bar" onclick="setSubType('bar')">แท่ง</button>
+        <button class="ctrl-btn" id="sub-t-line" onclick="setSubType('line')">เส้น</button>
+      </div>
+      <div class="chart-container" id="sub-chart-el"></div>
+      <div id="sub-chart-summary" style="margin-top:8px"></div>
     </div>
     <div class="card">
       <div class="card-title">📊 รวมทุก Sub (kWh สะสม)</div>
@@ -637,37 +673,72 @@ i svg{
     <div id="report-area"><div class="section-empty">📋 เลือกเดือนเพื่อดูรายงาน</div></div>
   </div>
    
+   
 <!-- ── เทียบการใช้ไฟ 9 กลุ่มหลัก ── -->
   <div class="card">
-    <div class="card-title"> เทียบการใช้ไฟ 9 กลุ่มหลัก</div>
-    <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="btn btn-ghost btn-sm gcmp-mode-btn active" id="gcmp-day" onclick="setGroupCmpMode('day')">รายวัน</button>
-      <button class="btn btn-ghost btn-sm gcmp-mode-btn" id="gcmp-month" onclick="setGroupCmpMode('month')">รายเดือน</button>
-      <button class="btn btn-ghost btn-sm gcmp-mode-btn" id="gcmp-year" onclick="setGroupCmpMode('year')">รายปี</button>
+    <div class="card-title">เทียบการใช้ไฟ 9 กลุ่มหลัก</div>
+    <div class="chart-ctrl">
+      <span class="chart-ctrl-label">มุมมอง:</span>
+      <button class="ctrl-btn green" id="g9-p-day" onclick="setG9Period('day')">รายวัน</button>
+      <button class="ctrl-btn" id="g9-p-month" onclick="setG9Period('month')">รายเดือน</button>
+      <button class="ctrl-btn" id="g9-p-year" onclick="setG9Period('year')">รายปี</button>
     </div>
-    <div class="f-row">
-      <label class="f-label" id="gcmp-pick-label">เลือกวันที่</label>
-      <select class="f-input" id="gcmp-pick" onchange="renderGroupCompare()"></select>
+    <div class="chart-ctrl">
+      <button class="ctrl-nav" onclick="navG9(-1)">◀</button>
+      <input class="ctrl-date" type="date" id="g9-date" onchange="renderG9Chart()">
+      <input class="ctrl-date" type="month" id="g9-month" onchange="renderG9Chart()" style="display:none">
+      <select class="ctrl-date" id="g9-year" onchange="renderG9Chart()" style="display:none"></select>
+      <button class="ctrl-nav" onclick="navG9(1)">▶</button>
+      <span style="font-size:11px;color:var(--accent);font-weight:700" id="g9-label"></span>
     </div>
-    <div id="group-cmp-area"><div class="section-empty">เลือกช่วงเพื่อเทียบ 9 กลุ่ม</div></div>
+    <div class="chart-ctrl">
+      <span class="chart-ctrl-label">เรียง:</span>
+      <button class="ctrl-btn green" id="g9-s-default" onclick="setG9Sort('default')">ตามกลุ่ม</button>
+      <button class="ctrl-btn" id="g9-s-desc" onclick="setG9Sort('desc')">มาก→น้อย</button>
+      <button class="ctrl-btn" id="g9-s-asc" onclick="setG9Sort('asc')">น้อย→มาก</button>
+      <div class="ctrl-sep"></div>
+      <button class="ctrl-btn" id="g9-pct" onclick="toggleG9Pct()">แสดง %</button>
+    </div>
+    <div class="chart-container" id="g9-chart-el"></div>
+    <div id="g9-chart-summary" style="margin-top:8px"></div>
   </div>
    
   <!-- ── กราฟเทียบต่อกลุ่ม ── -->
   <div class="card">
-    <div class="card-title"> กราฟเทียบการใช้ไฟแต่ละกลุ่ม</div>
+    <div class="card-title">กราฟเทียบการใช้ไฟแต่ละกลุ่ม</div>
     <div class="f-row">
       <label class="f-label">เลือกกลุ่ม</label>
-      <select class="f-input" id="cmp-group" onchange="renderCompareChart()"></select>
+      <select class="f-input" id="cmp-group" onchange="renderCmpChart()"></select>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="btn btn-ghost btn-sm cmp-mode-btn active" id="cmp-day"   onclick="setCompareMode('day')">รายวัน</button>
-      <button class="btn btn-ghost btn-sm cmp-mode-btn"        id="cmp-month" onclick="setCompareMode('month')">รายเดือน</button>
-      <button class="btn btn-ghost btn-sm cmp-mode-btn"        id="cmp-year"  onclick="setCompareMode('year')">รายปี</button>
+    <div class="chart-ctrl">
+      <span class="chart-ctrl-label">ช่วงเร็ว:</span>
+      <button class="ctrl-btn yellow" onclick="setCmpQuick('7d')">7 วัน</button>
+      <button class="ctrl-btn yellow" onclick="setCmpQuick('30d')">30 วัน</button>
+      <button class="ctrl-btn yellow" onclick="setCmpQuick('thisM')">เดือนนี้</button>
+      <button class="ctrl-btn yellow" onclick="setCmpQuick('lastM')">เดือนก่อน</button>
+      <button class="ctrl-btn yellow" onclick="setCmpQuick('3m')">3 เดือน</button>
+      <button class="ctrl-btn yellow" onclick="setCmpQuick('all')">ทั้งหมด</button>
     </div>
-    <div id="compare-area"><div class="section-empty">เลือกกลุ่มเพื่อดูกราฟ</div></div>
+    <div class="chart-ctrl">
+      <span class="chart-ctrl-label">จาก:</span>
+      <input class="ctrl-date" type="date" id="cmp-from" onchange="renderCmpChart()">
+      <span class="chart-ctrl-label">ถึง:</span>
+      <input class="ctrl-date" type="date" id="cmp-to" onchange="renderCmpChart()">
+    </div>
+    <div class="chart-ctrl">
+      <span class="chart-ctrl-label">มุมมอง:</span>
+      <button class="ctrl-btn green" id="cmp-p-day" onclick="setCmpPeriod('day')">รายวัน</button>
+      <button class="ctrl-btn" id="cmp-p-month" onclick="setCmpPeriod('month')">รายเดือน</button>
+      <button class="ctrl-btn" id="cmp-p-year" onclick="setCmpPeriod('year')">รายปี</button>
+      <div class="ctrl-sep"></div>
+      <button class="ctrl-btn on" id="cmp-avg" onclick="toggleCmpOpt('avg')">เส้นเฉลี่ย</button>
+      <div class="ctrl-sep"></div>
+      <button class="ctrl-btn green" id="cmp-t-bar" onclick="setCmpType('bar')">แท่ง</button>
+      <button class="ctrl-btn" id="cmp-t-line" onclick="setCmpType('line')">เส้น</button>
+    </div>
+    <div class="chart-container" id="cmp-chart-el"></div>
+    <div id="cmp-chart-summary" style="margin-top:8px"></div>
   </div>
-
-</div>
   <!-- QR -->
   <div class="panel" id="panel-qr">
     <div class="card">
@@ -905,7 +976,6 @@ const GROUP_COLORS = {
   'BODY':'#00D4FF','PAINT':'#22C55E','LA':'#FACC15','UA':'#fb923c',
   'PT7,8':'#a78bfa','FRAME':'#f472b6','OFFICE':'#38bdf8','FR':'#fb7185','OLD CANTEEN':'#4ade80'
 };
-let groupCmpMode = 'day';
    
 /* ───────── UTILITIES ───────── */
 function jLoad(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
@@ -1078,6 +1148,11 @@ function toggleTheme(){
   const cur = document.documentElement.getAttribute('data-theme');
   const nxt = cur === 'dark' ? 'light' : 'dark';
   localStorage.setItem('theme', nxt); setTheme(nxt);
+  setTimeout(function(){
+    if(typeof subChartInst!=='undefined' && subChartInst) renderSubChart();
+    if(typeof g9ChartInst!=='undefined' && g9ChartInst) renderG9Chart();
+    if(typeof cmpChartInst!=='undefined' && cmpChartInst) renderCmpChart();
+  }, 100);
 }
 
 /* ════════════ API ════════════ */
@@ -1245,8 +1320,8 @@ function goTab(name){
   const tabEl = document.querySelectorAll('.tab')[idx];
   if(tabEl) tabEl.classList.add('active');
   if(name === 'data')     { renderData(); renderStats(); }
-  if(name === 'chart')    { populateDDs(); setChartRange(30); renderAllChart(); }
-  if(name === 'summary')  { buildMonthOptions(); buildCompareGroupOptions(); loadReport(); buildGroupCmpPicker(); renderGroupCompare(); }
+  if(name === 'chart')    { populateDDs(); setSubQuick('30d'); renderAllChart(); }
+  if(name === 'summary')  { buildMonthOptions(); buildCompareGroupOptions(); loadReport(); initG9Pickers(); renderG9Chart(); }
   if(name === 'qr')       { renderQR(); }
   if(name === 'settings') { renderSubList(); renderCalendarList(); }
 }
@@ -1421,198 +1496,11 @@ function buildCompareGroupOptions(){
     + '<option value="__TOTAL__">TOTAL</option>';
   if(prev) sel.value = prev;
 }
-function setCompareMode(mode){
-  compareMode = mode;
-  document.querySelectorAll('.cmp-mode-btn').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('cmp-'+mode);
-  if(btn) btn.classList.add('active');
-  renderCompareChart();
-}
 function getColIds(key){
   if(key === '__UTILITY__') return REPORT_UTIL.flatMap(c => c.ids);
   if(key === '__TOTAL__')   return [...REPORT_MAIN, ...REPORT_UTIL].flatMap(c => c.ids);
   const col = [...REPORT_MAIN, ...REPORT_UTIL].find(c => c.key === key);
   return col ? col.ids : [];
-}
-async function renderCompareChart(){
-  const groupKey = document.getElementById('cmp-group')?.value;
-  const area = document.getElementById('compare-area');
-  if(!groupKey){ area.innerHTML = '<div class="section-empty">เลือกกลุ่ม</div>'; return; }
-  const ids = getColIds(groupKey);
-  area.innerHTML = '<div class="section-empty">⏳ กำลังคำนวณ...</div>';
-  const gran = compareMode === 'day' ? 'day' : 'month';
-  let dateFrom = null, dateTo = null;
-  if(compareMode === 'day'){
-    const month = document.getElementById('rep-month')?.value;
-    if(month){ const [y,m]=month.split('-'); dateFrom=`${month}-01`; dateTo=`${month}-${String(new Date(parseInt(y),parseInt(m),0).getDate()).padStart(2,'0')}`; }
-  }
-  try{
-    const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity:gran });
-    if(!res || !res.success) throw new Error(res?.error||'error');
-    const raw = res.summary || [];
-    const meterMap = {};
-    raw.forEach(r => { if(!meterMap[r.subId]) meterMap[r.subId]={}; meterMap[r.subId][r.period]={firstKwh:r.firstKwh,lastKwh:r.lastKwh}; });
-    const allPeriods = [...new Set(raw.map(r => r.period))].sort();
-    if(compareMode === 'year'){
-      const byYear = {};
-      allPeriods.forEach(p => { ids.forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null) byYear[p.slice(0,4)] = (byYear[p.slice(0,4)]||0) + u; }); });
-      drawCompareBars(Object.entries(byYear).map(([k,v])=>({label:k,value:v})), 'ปี'); return;
-    }
-    const dataPoints = allPeriods.map(p => {
-      let total = 0, has = false;
-      ids.forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null){ total += u; has = true; } });
-      let label;
-      if(compareMode === 'day'){ label = parseInt(p.split('-')[2])+'/'+parseInt(p.split('-')[1]); }
-      else { const MN=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; label = MN[parseInt(p.split('-')[1])]+p.slice(2,4); }
-      return { label, value: has ? total : 0 };
-    });
-    drawCompareBars(dataPoints, compareMode==='day'?'วัน':'เดือน');
-  }catch(e){ area.innerHTML = `<div class="warn-box">❌ ${e.message}</div>`; }
-}
-function drawCompareBars(points, unit){
-  const area = document.getElementById('compare-area');
-  if(!points.length){ area.innerHTML = '<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
-  const maxVal = Math.max(...points.map(p => p.value), 1);
-  const CHART_H = getChartH();
-  const fitScreen = points.length <= 16;
-  const bars = points.map(p => {
-    const barH = Math.max(3, Math.round(Math.max(0,p.value)/maxVal*CHART_H));
-    const valStr = Math.round(p.value).toLocaleString();
-    const colStyle = fitScreen ? 'flex:1;min-width:0' : 'min-width:46px';
-    return `<div class="vbar-col" style="${colStyle}" title="${p.label} — ${valStr} kWh">
-      <div class="vbar-val" style="font-size:${fitScreen?'8px':'9px'}">${valStr}</div>
-      <div class="vbar-space"><div class="vbar-bar" style="height:${barH}px"></div></div>
-      <div class="vbar-label">${p.label}</div>
-    </div>`;
-  }).join('');
-  const total = points.reduce((a,p)=>a+p.value,0);
-  const avg = points.length ? total/points.length : 0;
-  const chartStyle = fitScreen ? 'min-width:100%' : 'min-width:max-content';
-  area.innerHTML = `
-    <div class="vbar-scroll"><div class="vbar-chart" style="${chartStyle}">${bars}</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-      <span class="chip chip-green">⚡ รวม ${Math.round(total).toLocaleString()} kWh</span>
-      <span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">📊 เฉลี่ย ${Math.round(avg).toLocaleString()} kWh/${unit}</span>
-    </div>`;
-}
-
-function setGroupCmpMode(mode){
-  groupCmpMode = mode;
-  document.querySelectorAll('.gcmp-mode-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('gcmp-'+mode)?.classList.add('active');
-  buildGroupCmpPicker();
-  renderGroupCompare();
-}
-
-function buildGroupCmpPicker(){
-  const sel = document.getElementById('gcmp-pick');
-  if(!sel) return;
-  const lbl = document.getElementById('gcmp-pick-label');
-  if(lbl) lbl.textContent = groupCmpMode==='day'?'เลือกวันที่':groupCmpMode==='month'?'เลือกเดือน':'เลือกปี';
-  let opts = [];
-  if(groupCmpMode === 'day'){
-    const days = [...new Set(records.map(r => String(r.date).slice(0,10)))].filter(Boolean).sort().reverse();
-    opts = days.map(d => ({ v:d, t:fmtDate(d) }));
-  } else if(groupCmpMode === 'month'){
-    const ms = [...new Set(records.map(r => String(r.date).slice(0,7)))].filter(Boolean).sort().reverse();
-    const MN = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-    opts = ms.map(m => { const [y,mm]=m.split('-'); return { v:m, t:`${MN[parseInt(mm)]} ${y}` }; });
-  } else {
-    const ys = [...new Set(records.map(r => String(r.date).slice(0,4)))].filter(Boolean).sort().reverse();
-    opts = ys.map(y => ({ v:y, t:y }));
-  }
-  sel.innerHTML = opts.map(o => `<option value="${o.v}">${o.t}</option>`).join('');
-  if(groupCmpMode === 'day' && opts.length >= 2){
-    sel.value = opts[1].v;
-  }
-}
-
-async function renderGroupCompare(){
-  const area = document.getElementById('group-cmp-area');
-  const pick = document.getElementById('gcmp-pick')?.value;
-  if(!pick){ area.innerHTML = '<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
-  area.innerHTML = '<div class="section-empty">⏳ กำลังคำนวณ...</div>';
-
-  let dateFrom, dateTo, targetPeriods;
-  if(groupCmpMode === 'day'){
-    dateFrom = pick;
-    // ✅ ดึงเผื่อ 7 วันถัดไป เพื่อให้มีค่าถัดไปมาคำนวณ used
-    const d = new Date(pick); d.setDate(d.getDate() + 7);
-    dateTo = d.toISOString().slice(0,10);
-    targetPeriods = [pick]; // แต่คิดแค่วันที่เลือก
-  } else if(groupCmpMode === 'month'){
-    const [y,m] = pick.split('-');
-    dateFrom = `${pick}-01`;
-    // เผื่อต้นเดือนถัดไป
-    const nd = new Date(parseInt(y), parseInt(m), 7);
-    dateTo = nd.toISOString().slice(0,10);
-    targetPeriods = null; // ทั้งเดือน
-  } else {
-    dateFrom = `${pick}-01-01`;
-    dateTo = `${parseInt(pick)+1}-01-07`; // เผื่อต้นปีถัดไป
-    targetPeriods = null;
-  }
-
-  try{
-    const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity:'day' });
-    if(!res || !res.success) throw new Error(res?.error||'error');
-    const raw = res.summary || [];
-    const meterMap = {};
-    raw.forEach(r => { if(!meterMap[r.subId]) meterMap[r.subId]={}; meterMap[r.subId][r.period]={firstKwh:r.firstKwh,lastKwh:r.lastKwh}; });
-    const allPeriods = [...new Set(raw.map(r => r.period))].sort();
-
-    // period ที่จะนับ: day = วันเดียว, month/year = เฉพาะที่อยู่ในช่วง pick
-    let countPeriods;
-    if(groupCmpMode === 'day'){
-      countPeriods = targetPeriods;
-    } else if(groupCmpMode === 'month'){
-      countPeriods = allPeriods.filter(p => p.startsWith(pick)); // 2026-06
-    } else {
-      countPeriods = allPeriods.filter(p => p.startsWith(pick)); // 2026
-    }
-
-    const groupVals = REPORT_MAIN.map(col => {
-      let total = 0;
-      countPeriods.forEach(p => {
-        (col.ids||[]).forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null) total += u; });
-        (col.minus||[]).forEach(id => { const u = meterUsedOnDay(meterMap, id, p, allPeriods); if(u !== null) total -= u; });
-      });
-      return { name: col.name, value: total };
-    });
-    drawGroupCompareBars(groupVals);
-  }catch(e){ area.innerHTML = `<div class="warn-box">❌ ${e.message}</div>`; }
-}
-function drawGroupCompareBars(groupVals){
-  const area = document.getElementById('group-cmp-area');
-  const maxVal = Math.max(...groupVals.map(g => g.value), 1);
-  const CHART_H = getChartH();
-  const bars = groupVals.map(g => {
-    const barH = Math.max(3, Math.round(Math.max(0,g.value)/maxVal*CHART_H));
-    const valStr = Math.round(g.value).toLocaleString();
-    const color = GROUP_COLORS[g.name] || 'var(--accent)';
-    return `<div class="vbar-col" style="flex:1;min-width:0" title="${g.name} — ${valStr} kWh">
-      <div class="vbar-val" style="font-size:8px">${valStr}</div>
-      <div class="vbar-space"><div class="vbar-bar" style="height:${barH}px;background:linear-gradient(180deg,${color},${color}88)"></div></div>
-      <div class="vbar-label" style="font-size:8px">${g.name}</div>
-    </div>`;
-  }).join('');
-  const total = groupVals.reduce((a,g)=>a+g.value,0);
-  const top = groupVals.reduce((a,g)=>g.value>a.value?g:a, groupVals[0]);
-  area.innerHTML = `
-    <div class="vbar-scroll"><div class="vbar-chart" style="min-width:100%">${bars}</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-      <span class="chip chip-green">⚡ รวม ${Math.round(total).toLocaleString()} kWh</span>
-      <span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">🏭 สูงสุด: ${top.name}</span>
-    </div>`;
-}
-function getChartH(){
-  const w = window.innerWidth;
-  const portrait = window.matchMedia('(orientation:portrait)').matches;
-  let boxH;
-  if(w >= 900)        boxH = 300;   // คอม
-  else if(portrait)   boxH = 260;   // มือถือตั้ง
-  else                boxH = 170;   // มือถือตะแคง
-  return boxH - 24;  // เผื่อตัวเลข
 }
    
 /* ════════════ WORK CALENDAR ════════════ */
@@ -2041,96 +1929,6 @@ function renderStats(){
 function updateBadge(){ document.getElementById('hdr-badge').textContent = records.length + ' rec'; }
 
 /* ════════════ CHART (รายตู้) ════════════ */
-function setChartRange(days){
-  const to   = new Date();
-  const toEl = document.getElementById('chart-to');
-  const fromEl = document.getElementById('chart-from');
-  toEl.value = to.toISOString().split('T')[0];
-  if(days === 0){ fromEl.value = ''; }
-  else { const from = new Date(); from.setDate(from.getDate() - days + 1); fromEl.value = from.toISOString().split('T')[0]; }
-  renderChart();
-}
-function renderChart(){
-  const subId   = document.getElementById('chart-sub').value;
-  const fromVal = document.getElementById('chart-from')?.value || '';
-  const toVal   = document.getElementById('chart-to')?.value   || '';
-  const area    = document.getElementById('chart-area');
-  const summary = document.getElementById('chart-summary');
-  if(!subId){ area.innerHTML='<div class="section-empty">📈 เลือก Substation เพื่อดูกราฟ</div>'; summary.innerHTML=''; return; }
-  let recs = getSubRecs(subId);
-  if(fromVal) recs = recs.filter(r => r.date >= fromVal);
-  if(toVal)   recs = recs.filter(r => r.date <= toVal);
-  if(!recs.length){ area.innerHTML='<div class="section-empty">📭 ไม่มีข้อมูลในช่วงที่เลือก</div>'; summary.innerHTML=''; return; }
-  function parseLocal(s){ const [y,m,d]=String(s).split('-').map(Number); return new Date(y,m-1,d); }
-  const spanDays = fromVal ? Math.ceil((parseLocal(toVal||new Date().toISOString().slice(0,10)) - parseLocal(fromVal))/864e5) : 999;
-  const gran = spanDays <= 31 ? 'day' : spanDays <= 90 ? 'week' : 'month';
-  const sub = subs.find(s => s.id === subId);
-  const dec = sub ? sub.decimal : 0;
-  const byKey = {};
-  recs.forEach(r => {
-    let key, label;
-    if(gran === 'day'){ key = r.date; label = fmtChartDate(r.date); }
-    else if(gran === 'week'){
-      const d = parseLocal(r.date); const day = d.getDay()||7;
-      d.setDate(d.getDate()+4-day);
-      const ys = new Date(d.getFullYear(),0,1);
-      const wk = Math.ceil((((d-ys)/864e5)+1)/7);
-      key = `${d.getFullYear()}-W${String(wk).padStart(2,'0')}`; label = 'W'+wk;
-    } else {
-      key = r.date.slice(0,7);
-      const M=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-      label = M[parseInt(r.date.slice(5,7))];
-    }
-    if(!byKey[key]) byKey[key] = { key, label, used:0, count:0, firstDate:r.date };
-    byKey[key].used += parseFloat(r.used)||0;
-    byKey[key].count++;
-  });
-  const items  = Object.values(byKey).sort((a,b) => a.key.localeCompare(b.key));
-  const showItems = gran === 'day' ? items.slice(-31) : items;
-  const maxVal = Math.max(...showItems.map(d => d.used), 1);
-  const CHART_H = getChartH();
-  const fitScreen = showItems.length <= 16;
-  const bars = showItems.map(d => {
-    const pct  = Math.max(0,d.used)/maxVal;
-    const barH = Math.max(3, Math.round(pct*CHART_H));
-    const valStr = parseFloat(d.used.toFixed(dec)).toLocaleString('th-TH',{maximumFractionDigits:dec});
-    let barBg = 'linear-gradient(180deg,var(--green),var(--accent))', opacity = '1', labelCol = 'var(--text-3)';
-    if(gran === 'day'){ const dType = getDayType(d.firstDate); if(dType === 'holiday'){ barBg = 'linear-gradient(180deg,var(--orange),var(--red))'; opacity = '0.65'; labelCol = 'var(--orange)'; } }
-    const colStyle = fitScreen ? 'flex:1;min-width:0' : 'min-width:46px';
-    return `<div class="vbar-col" style="${colStyle}" title="${d.label} — ${valStr} kWh (${d.count} ครั้ง)">
-      <div class="vbar-val" style="font-size:${fitScreen?'8px':'9px'}">${valStr}</div>
-      <div class="vbar-space"><div class="vbar-bar" style="height:${barH}px;background:${barBg};opacity:${opacity}"></div></div>
-      <div class="vbar-label" style="color:${labelCol}">${d.label}</div>
-    </div>`;
-  }).join('');
-  const granTxt = {day:'รายวัน',week:'รายสัปดาห์',month:'รายเดือน'}[gran];
-  const chartStyle = fitScreen ? 'min-width:100%' : 'min-width:max-content';
-  area.innerHTML = `
-    <div style="font-size:9px;color:var(--text-3);margin-bottom:6px;font-family:var(--font-mono)">
-      ${granTxt} · ${showItems.length} ช่วง · ${gran==='day' ? '<span style="color:var(--green)">▮</span> ทำงาน <span style="color:var(--orange)">▮</span> หยุด' : ''}
-    </div>
-    <div class="vbar-scroll"><div class="vbar-chart" style="${chartStyle}">${bars}</div></div>`;
-  const totalUsed = showItems.reduce((a,d) => a+d.used, 0);
-  const avgVal    = showItems.length ? totalUsed/showItems.length : 0;
-  summary.innerHTML = `
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-      <span class="chip chip-green">⚡ รวม ${parseFloat(totalUsed.toFixed(dec)).toLocaleString()} kWh</span>
-      <span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">📊 เฉลี่ย ${parseFloat(avgVal.toFixed(dec)).toLocaleString()} kWh/${granTxt.replace('ราย','')}</span>
-    </div>`;
-}
-function renderAllChart(){
-  const area    = document.getElementById('all-chart');
-  const summary = subs.map(s => ({ id: s.id, total: records.filter(r => r.subId === s.id).reduce((a,r) => a + (parseFloat(r.used)||0), 0) }))
-    .filter(x => x.total > 0).sort((a,b) => b.total - a.total);
-  if(!summary.length){ area.innerHTML = '<div class="section-empty">📊 ยังไม่มีข้อมูล</div>'; return; }
-  const maxVal = Math.max(...summary.map(x => x.total), 1);
-  area.innerHTML = summary.map(x => `<div class="bar-row">
-    <div class="bar-label">${x.id}</div>
-    <div class="bar-track"><div class="bar-fill" style="width:${Math.round(x.total/maxVal*100)}%"></div></div>
-    <div class="bar-val">${Math.round(x.total).toLocaleString()}</div>
-  </div>`).join('');
-}
-
 /* ════════════ QR ════════════ */
 function renderQR(){
   const grid = document.getElementById('qr-grid');
@@ -2274,6 +2072,488 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 init();
+
+/* ════════════════════════════════════════════════════════════
+   APEXCHARTS SYSTEM — แทนฟังก์ชันกราฟเก่าทั้งหมด
+   
+   วางแทนที่ฟังก์ชันเก่า (ดู 06_delete_list.txt)
+   วางไว้หลัง renderReport / exportReportExcel
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Global chart instances ── */
+let subChartInst = null;
+let g9ChartInst = null;
+let cmpChartInst = null;
+
+/* ── อ่านสีจาก CSS variables (dark/light) ── */
+function getThemeColors(){
+  const s = getComputedStyle(document.documentElement);
+  const g = k => (s.getPropertyValue(k)||'').trim();
+  return {
+    accent:g('--accent')||'#00D4FF', green:g('--green')||'#22C55E',
+    orange:g('--orange')||'#fb923c', red:g('--red')||'#EF4444',
+    purple:g('--purple')||'#a78bfa', yellow:g('--yellow')||'#FACC15',
+    text1:g('--text-1')||'#e8f0ff', text2:g('--text-2')||'#8fa8c8', text3:g('--text-3')||'#566d8a',
+    surface1:g('--surface-1')||'#111827', surface2:g('--surface-2')||'#182233',
+    border:g('--border')||'#1e2c42',
+    isDark: document.documentElement.getAttribute('data-theme') === 'dark'
+  };
+}
+
+/* ── ApexCharts base options ── */
+function apexBase(TC){
+  return {
+    chart:{ fontFamily:'IBM Plex Mono, monospace', foreColor:TC.text2,
+      toolbar:{ show:true, tools:{ download:true, zoom:true, zoomin:true, zoomout:true, pan:true, reset:true } },
+      background:'transparent', animations:{ enabled:true, speed:400 } },
+    grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
+    xaxis:{ axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{style:{fontSize:'10px',colors:TC.text3}} },
+    yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
+    tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'},
+      y:{formatter:function(v){return v!=null?Math.round(v).toLocaleString()+' kWh':'—';}} },
+    legend:{ fontSize:'11px', labels:{colors:TC.text2}, markers:{shape:'square',size:6} },
+    dataLabels:{ enabled:false },
+    states:{ hover:{filter:{type:'lighten',value:0.08}} }
+  };
+}
+
+/* ── Quick range helper ── */
+function getQuickRange(key){
+  var today = new Date().toISOString().slice(0,10);
+  var t = new Date(today+'T00:00:00');
+  var fmt = function(dt){ return dt.toISOString().slice(0,10); };
+  if(key==='7d'){ var f=new Date(t);f.setDate(f.getDate()-6); return [fmt(f),today]; }
+  if(key==='30d'){ var f=new Date(t);f.setDate(f.getDate()-29); return [fmt(f),today]; }
+  if(key==='thisM') return [today.slice(0,8)+'01',today];
+  if(key==='lastM'){ var f=new Date(t.getFullYear(),t.getMonth()-1,1); var l=new Date(t.getFullYear(),t.getMonth(),0); return [fmt(f),fmt(l)]; }
+  if(key==='3m'){ var f=new Date(t);f.setMonth(f.getMonth()-2);f.setDate(1); return [fmt(f),today]; }
+  return ['',''];
+}
+
+/* ── Aggregate records by period ── */
+function aggregateRecords(recs, period){
+  var MN = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  if(period === 'day'){
+    var byDate = {};
+    recs.forEach(function(r){
+      if(!byDate[r.date]) byDate[r.date] = { used:0, count:0 };
+      byDate[r.date].used += parseFloat(r.used)||0;
+      byDate[r.date].count++;
+    });
+    return Object.entries(byDate).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){
+      var date=e[0], v=e[1];
+      var p = date.split('-').map(Number);
+      return { label:p[2]+'/'+p[1], value:v.used, date:date, hol:getDayType(date)==='holiday' };
+    });
+  }
+  if(period === 'month'){
+    var byM = {};
+    recs.forEach(function(r){
+      var key = String(r.date).slice(0,7);
+      if(!byM[key]) byM[key] = 0;
+      byM[key] += parseFloat(r.used)||0;
+    });
+    return Object.entries(byM).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){
+      var p = e[0].split('-');
+      return { label:MN[parseInt(p[1])]+' '+p[0], value:e[1], date:e[0] };
+    });
+  }
+  var byY = {};
+  recs.forEach(function(r){
+    var y = String(r.date).slice(0,4);
+    if(!byY[y]) byY[y] = 0;
+    byY[y] += parseFloat(r.used)||0;
+  });
+  return Object.entries(byY).sort(function(a,b){return a[0]-b[0];}).map(function(e){
+    return { label:e[0], value:e[1], date:e[0] };
+  });
+}
+
+/* ══════════════════════════════════════
+   กราฟ 1: รายตู้ (Sub Chart)
+   ══════════════════════════════════════ */
+var subChartState = { period:'day', type:'bar', showAvg:true, showHol:true };
+
+function setSubQuick(key){
+  var r = getQuickRange(key);
+  document.getElementById('sub-from').value = r[0];
+  document.getElementById('sub-to').value = r[1];
+  renderSubChart();
+}
+function setSubPeriod(p){
+  subChartState.period = p;
+  ['day','month','year'].forEach(function(k){
+    var el = document.getElementById('sub-p-'+k);
+    if(el) el.className = k===p ? 'ctrl-btn green' : 'ctrl-btn';
+  });
+  var holBtn = document.getElementById('sub-hol');
+  if(holBtn) holBtn.style.display = p==='day' ? '' : 'none';
+  renderSubChart();
+}
+function setSubType(t){
+  subChartState.type = t;
+  ['bar','line'].forEach(function(k){
+    var el = document.getElementById('sub-t-'+k);
+    if(el) el.className = k===t ? 'ctrl-btn green' : 'ctrl-btn';
+  });
+  renderSubChart();
+}
+function toggleSubOpt(opt){
+  if(opt==='avg') subChartState.showAvg = !subChartState.showAvg;
+  if(opt==='hol') subChartState.showHol = !subChartState.showHol;
+  var el = document.getElementById('sub-'+opt);
+  var on = opt==='avg' ? subChartState.showAvg : subChartState.showHol;
+  if(el) el.className = on ? 'ctrl-btn on' : 'ctrl-btn';
+  renderSubChart();
+}
+
+function renderSubChart(){
+  var subId = document.getElementById('chart-sub').value;
+  var el = document.getElementById('sub-chart-el');
+  var sumEl = document.getElementById('sub-chart-summary');
+  if(!subId){ el.innerHTML='<div class="section-empty">เลือก Substation เพื่อดูกราฟ</div>'; sumEl.innerHTML=''; return; }
+
+  var fromVal = document.getElementById('sub-from').value || '';
+  var toVal = document.getElementById('sub-to').value || '';
+  var recs = getSubRecs(subId);
+  if(fromVal) recs = recs.filter(function(r){return r.date >= fromVal;});
+  if(toVal) recs = recs.filter(function(r){return r.date <= toVal;});
+  if(!recs.length){ el.innerHTML='<div class="section-empty">ไม่มีข้อมูลในช่วงที่เลือก</div>'; sumEl.innerHTML=''; return; }
+
+  var data = aggregateRecords(recs, subChartState.period);
+  if(!data.length){ el.innerHTML='<div class="section-empty">ไม่มีข้อมูล</div>'; sumEl.innerHTML=''; return; }
+
+  var TC = getThemeColors();
+  var total = data.reduce(function(a,d){return a+d.value;},0);
+  var avg = data.length ? total/data.length : 0;
+  var pl = subChartState.period==='day'?'วัน':subChartState.period==='month'?'เดือน':'ปี';
+
+  var colors = data.map(function(d){ return subChartState.showHol && d.hol ? TC.orange : TC.green; });
+  var values = data.map(function(d){return Math.round(d.value);});
+  var labels = data.map(function(d){return d.label;});
+
+  var series = [{ name:'ใช้ไฟ (kWh/'+pl+')', data:values }];
+  var chartColors = [TC.green];
+  var strokeW = subChartState.type==='bar' ? [0] : [2.5];
+  var strokeDash = [0];
+
+  if(subChartState.showAvg){
+    var avgRound = Math.round(avg);
+    series.push({ name:'ค่าเฉลี่ย', data:data.map(function(){return avgRound;}), type:'line' });
+    chartColors.push(TC.accent+'77');
+    strokeW = subChartState.type==='bar' ? [0,2] : [2.5,2];
+    strokeDash = [0,5];
+  }
+
+  var base = apexBase(TC);
+  var opts = JSON.parse(JSON.stringify(base));
+  opts.chart.type = subChartState.type==='bar' ? 'bar' : 'line';
+  opts.chart.height = 340;
+  opts.chart.fontFamily = base.chart.fontFamily;
+  opts.chart.foreColor = base.chart.foreColor;
+  opts.chart.toolbar = base.chart.toolbar;
+  opts.chart.background = 'transparent';
+  opts.chart.animations = { enabled:true, speed:400 };
+  opts.series = series;
+  opts.xaxis.categories = labels;
+  opts.colors = subChartState.period==='day' && subChartState.showHol ? colors : chartColors;
+  opts.plotOptions = { bar:{ borderRadius:4, columnWidth:'70%', distributed: subChartState.period==='day' && subChartState.showHol } };
+  opts.stroke = { width:strokeW, dashArray:strokeDash };
+  opts.fill = { opacity: subChartState.type==='bar' ? 0.7 : 0.1 };
+  opts.legend = { show: subChartState.showAvg && !(subChartState.period==='day' && subChartState.showHol), fontSize:'11px', labels:{colors:TC.text2} };
+
+  if(subChartInst) subChartInst.destroy();
+  el.innerHTML = '';
+  subChartInst = new ApexCharts(el, opts);
+  subChartInst.render();
+
+  sumEl.innerHTML = '<span class="chip chip-green">⚡ รวม '+Math.round(total).toLocaleString()+' kWh</span> '+
+    '<span class="chip chip-green">เฉลี่ย '+Math.round(avg).toLocaleString()+' kWh/'+pl+'</span> '+
+    '<span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">'+data.length+' '+pl+'</span>';
+}
+
+/* ══════════════════════════════════════
+   กราฟ 2: 9 กลุ่มหลัก (G9 Chart)
+   ══════════════════════════════════════ */
+var g9State = { period:'day', sort:'default', showPct:false };
+
+function setG9Period(p){
+  g9State.period = p;
+  ['day','month','year'].forEach(function(k){
+    var el = document.getElementById('g9-p-'+k);
+    if(el) el.className = k===p ? 'ctrl-btn green' : 'ctrl-btn';
+  });
+  document.getElementById('g9-date').style.display = p==='day' ? '' : 'none';
+  document.getElementById('g9-month').style.display = p==='month' ? '' : 'none';
+  document.getElementById('g9-year').style.display = p==='year' ? '' : 'none';
+  renderG9Chart();
+}
+function setG9Sort(s){
+  g9State.sort = s;
+  ['default','desc','asc'].forEach(function(k){
+    var el = document.getElementById('g9-s-'+k);
+    if(el) el.className = k===s ? 'ctrl-btn green' : 'ctrl-btn';
+  });
+  renderG9Chart();
+}
+function toggleG9Pct(){
+  g9State.showPct = !g9State.showPct;
+  var el = document.getElementById('g9-pct');
+  if(el) el.className = g9State.showPct ? 'ctrl-btn on' : 'ctrl-btn';
+  renderG9Chart();
+}
+function navG9(dir){
+  if(g9State.period === 'day'){
+    var el = document.getElementById('g9-date');
+    var d = new Date(el.value); d.setDate(d.getDate()+dir);
+    el.value = d.toISOString().slice(0,10);
+  } else if(g9State.period === 'month'){
+    var el = document.getElementById('g9-month');
+    var p = el.value.split('-').map(Number);
+    var nd = new Date(p[0],p[1]-1+dir,1);
+    el.value = nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0');
+  } else {
+    var el = document.getElementById('g9-year');
+    el.value = String(parseInt(el.value)+dir);
+  }
+  renderG9Chart();
+}
+function initG9Pickers(){
+  var dates = [];
+  records.forEach(function(r){ var d = String(r.date).slice(0,10); if(d && dates.indexOf(d)<0) dates.push(d); });
+  dates.sort();
+  if(!dates.length) return;
+  document.getElementById('g9-date').value = dates.length >= 2 ? dates[dates.length-2] : dates[dates.length-1];
+  var months = []; dates.forEach(function(d){ var m=d.slice(0,7); if(months.indexOf(m)<0) months.push(m); }); months.sort();
+  document.getElementById('g9-month').value = months[months.length-1] || '';
+  var years = []; dates.forEach(function(d){ var y=d.slice(0,4); if(years.indexOf(y)<0) years.push(y); }); years.sort();
+  var ySel = document.getElementById('g9-year');
+  ySel.innerHTML = years.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join('');
+  ySel.value = years[years.length-1] || '';
+}
+
+async function renderG9Chart(){
+  var el = document.getElementById('g9-chart-el');
+  var sumEl = document.getElementById('g9-chart-summary');
+  var TC = getThemeColors();
+  var MN = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  var pick;
+  if(g9State.period === 'day') pick = document.getElementById('g9-date').value;
+  else if(g9State.period === 'month') pick = document.getElementById('g9-month').value;
+  else pick = document.getElementById('g9-year').value;
+  if(!pick){ el.innerHTML='<div class="section-empty">เลือกช่วงเวลา</div>'; return; }
+
+  var lbl = document.getElementById('g9-label');
+  if(g9State.period==='day'){ var pp=pick.split('-'); lbl.textContent=parseInt(pp[2])+' '+MN[parseInt(pp[1])]+' '+pp[0]; }
+  else if(g9State.period==='month'){ var pp=pick.split('-'); lbl.textContent=MN[parseInt(pp[1])]+' '+pp[0]; }
+  else lbl.textContent = 'ปี '+pick;
+
+  el.innerHTML='<div class="section-empty">⏳ กำลังคำนวณ...</div>';
+
+  var dateFrom, dateTo;
+  if(g9State.period==='day'){
+    dateFrom = pick;
+    var d = new Date(pick); d.setDate(d.getDate()+7);
+    dateTo = d.toISOString().slice(0,10);
+  } else if(g9State.period==='month'){
+    var pp = pick.split('-');
+    dateFrom = pick+'-01';
+    var nd = new Date(parseInt(pp[0]),parseInt(pp[1]),7);
+    dateTo = nd.toISOString().slice(0,10);
+  } else {
+    dateFrom = pick+'-01-01';
+    dateTo = (parseInt(pick)+1)+'-01-07';
+  }
+
+  try{
+    var res = await apiPost({ action:'getMonthlySummary', dateFrom:dateFrom, dateTo:dateTo, granularity:'day' });
+    if(!res||!res.success) throw new Error(res&&res.error||'error');
+    var raw = res.summary || [];
+    var meterMap = {};
+    raw.forEach(function(r){ if(!meterMap[r.subId]) meterMap[r.subId]={}; meterMap[r.subId][r.period]={firstKwh:r.firstKwh,lastKwh:r.lastKwh}; });
+    var allPeriods = []; raw.forEach(function(r){ if(allPeriods.indexOf(r.period)<0) allPeriods.push(r.period); }); allPeriods.sort();
+
+    var countPeriods;
+    if(g9State.period==='day') countPeriods = [pick];
+    else countPeriods = allPeriods.filter(function(p){return p.startsWith(pick);});
+
+    var groupVals = REPORT_MAIN.map(function(col){
+      var total = 0;
+      countPeriods.forEach(function(p){
+        (col.ids||[]).forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null) total+=u; });
+        (col.minus||[]).forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null) total-=u; });
+      });
+      return { name:col.name, value:total, color:GROUP_COLORS[col.name]||TC.accent };
+    });
+
+    if(g9State.sort==='desc') groupVals.sort(function(a,b){return b.value-a.value;});
+    else if(g9State.sort==='asc') groupVals.sort(function(a,b){return a.value-b.value;});
+
+    var total = groupVals.reduce(function(a,g){return a+g.value;},0);
+    var top = groupVals.reduce(function(a,g){return g.value>a.value?g:a;}, groupVals[0]);
+
+    var base = apexBase(TC);
+    var opts = JSON.parse(JSON.stringify(base));
+    opts.chart.type = 'bar';
+    opts.chart.height = 320;
+    opts.chart.fontFamily = base.chart.fontFamily;
+    opts.chart.foreColor = base.chart.foreColor;
+    opts.chart.toolbar = base.chart.toolbar;
+    opts.chart.background = 'transparent';
+    opts.series = [{ name:'ใช้ไฟ (kWh)', data:groupVals.map(function(g){return Math.round(g.value);}) }];
+    opts.xaxis.categories = groupVals.map(function(g){return g.name;});
+    opts.xaxis.labels = { style:{fontSize:'9px',colors:TC.text3} };
+    opts.colors = groupVals.map(function(g){return g.color;});
+    opts.plotOptions = { bar:{ borderRadius:6, columnWidth:'65%', distributed:true } };
+    opts.fill = { opacity:0.7 };
+    opts.legend = { show:false };
+    if(g9State.showPct){
+      opts.tooltip.y = { formatter:function(v){ return Math.round(v).toLocaleString()+' kWh ('+(total>0?((v/total)*100).toFixed(1):'0')+'%)'; } };
+    }
+
+    if(g9ChartInst) g9ChartInst.destroy();
+    el.innerHTML = '';
+    g9ChartInst = new ApexCharts(el, opts);
+    g9ChartInst.render();
+
+    sumEl.innerHTML = '<span class="chip chip-green">⚡ รวม '+Math.round(total).toLocaleString()+' kWh</span> '+
+      '<span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">🏭 สูงสุด: '+top.name+'</span>';
+  }catch(e){ el.innerHTML='<div class="warn-box">❌ '+e.message+'</div>'; }
+}
+
+/* ══════════════════════════════════════
+   กราฟ 3: เทียบต่อกลุ่ม (Compare Chart)
+   ══════════════════════════════════════ */
+var cmpState = { period:'day', type:'bar', showAvg:true };
+
+function setCmpQuick(key){
+  var r = getQuickRange(key);
+  document.getElementById('cmp-from').value = r[0];
+  document.getElementById('cmp-to').value = r[1];
+  renderCmpChart();
+}
+function setCmpPeriod(p){
+  cmpState.period = p;
+  ['day','month','year'].forEach(function(k){
+    var el = document.getElementById('cmp-p-'+k);
+    if(el) el.className = k===p ? 'ctrl-btn green' : 'ctrl-btn';
+  });
+  renderCmpChart();
+}
+function setCmpType(t){
+  cmpState.type = t;
+  ['bar','line'].forEach(function(k){
+    var el = document.getElementById('cmp-t-'+k);
+    if(el) el.className = k===t ? 'ctrl-btn green' : 'ctrl-btn';
+  });
+  renderCmpChart();
+}
+function toggleCmpOpt(){
+  cmpState.showAvg = !cmpState.showAvg;
+  var el = document.getElementById('cmp-avg');
+  if(el) el.className = cmpState.showAvg ? 'ctrl-btn on' : 'ctrl-btn';
+  renderCmpChart();
+}
+
+async function renderCmpChart(){
+  var groupKey = document.getElementById('cmp-group').value;
+  var el = document.getElementById('cmp-chart-el');
+  var sumEl = document.getElementById('cmp-chart-summary');
+  if(!groupKey){ el.innerHTML='<div class="section-empty">เลือกกลุ่ม</div>'; return; }
+
+  var ids = getColIds(groupKey);
+  var fromVal = document.getElementById('cmp-from').value || null;
+  var toVal = document.getElementById('cmp-to').value || null;
+  var TC = getThemeColors();
+  var MN = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  el.innerHTML='<div class="section-empty">⏳ กำลังคำนวณ...</div>';
+
+  try{
+    var gran = cmpState.period === 'day' ? 'day' : 'month';
+    var res = await apiPost({ action:'getMonthlySummary', dateFrom:fromVal, dateTo:toVal, granularity:gran });
+    if(!res||!res.success) throw new Error(res&&res.error||'error');
+    var raw = res.summary || [];
+    var meterMap = {};
+    raw.forEach(function(r){ if(!meterMap[r.subId]) meterMap[r.subId]={}; meterMap[r.subId][r.period]={firstKwh:r.firstKwh,lastKwh:r.lastKwh}; });
+    var allPeriods = []; raw.forEach(function(r){ if(allPeriods.indexOf(r.period)<0) allPeriods.push(r.period); }); allPeriods.sort();
+
+    var dataPoints;
+    if(cmpState.period === 'year'){
+      var byYear = {};
+      allPeriods.forEach(function(p){ ids.forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null) byYear[p.slice(0,4)]=(byYear[p.slice(0,4)]||0)+u; }); });
+      dataPoints = Object.entries(byYear).map(function(e){return {label:e[0],value:e[1]};});
+    } else {
+      dataPoints = allPeriods.map(function(p){
+        var total=0, has=false;
+        ids.forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null){total+=u;has=true;} });
+        var label;
+        if(cmpState.period==='day') label=parseInt(p.split('-')[2])+'/'+parseInt(p.split('-')[1]);
+        else label=MN[parseInt(p.split('-')[1])]+' '+p.slice(0,4);
+        return { label:label, value:has?total:0 };
+      });
+    }
+
+    if(!dataPoints.length){ el.innerHTML='<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
+
+    var total = dataPoints.reduce(function(a,d){return a+d.value;},0);
+    var avg = dataPoints.length ? total/dataPoints.length : 0;
+    var pl = cmpState.period==='day'?'วัน':cmpState.period==='month'?'เดือน':'ปี';
+
+    var values = dataPoints.map(function(d){return Math.round(d.value);});
+    var labels = dataPoints.map(function(d){return d.label;});
+
+    var series = [{ name:'ใช้ไฟ (kWh/'+pl+')', data:values }];
+    var chartColors = [TC.accent];
+    var strokeW = cmpState.type==='bar' ? [0] : [2.5];
+    var strokeDash = [0];
+
+    if(cmpState.showAvg){
+      series.push({ name:'ค่าเฉลี่ย', data:dataPoints.map(function(){return Math.round(avg);}), type:'line' });
+      chartColors.push(TC.orange+'77');
+      strokeW = cmpState.type==='bar' ? [0,2] : [2.5,2];
+      strokeDash = [0,5];
+    }
+
+    var base = apexBase(TC);
+    var opts = JSON.parse(JSON.stringify(base));
+    opts.chart.type = cmpState.type==='bar' ? 'bar' : 'line';
+    opts.chart.height = 340;
+    opts.chart.fontFamily = base.chart.fontFamily;
+    opts.chart.foreColor = base.chart.foreColor;
+    opts.chart.toolbar = base.chart.toolbar;
+    opts.chart.background = 'transparent';
+    opts.series = series;
+    opts.xaxis.categories = labels;
+    opts.colors = chartColors;
+    opts.plotOptions = { bar:{ borderRadius:4, columnWidth:'70%' } };
+    opts.stroke = { width:strokeW, dashArray:strokeDash };
+    opts.fill = { opacity: cmpState.type==='bar' ? 0.6 : 0.1 };
+
+    if(cmpChartInst) cmpChartInst.destroy();
+    el.innerHTML = '';
+    cmpChartInst = new ApexCharts(el, opts);
+    cmpChartInst.render();
+
+    sumEl.innerHTML = '<span class="chip chip-green">⚡ รวม '+Math.round(total).toLocaleString()+' kWh</span> '+
+      '<span class="chip chip-green">เฉลี่ย '+Math.round(avg).toLocaleString()+' kWh/'+pl+'</span>';
+  }catch(e){ el.innerHTML='<div class="warn-box">❌ '+e.message+'</div>'; }
+}
+
+/* ══════════════════════════════════════
+   renderAllChart — เก็บไว้ (ไม่เปลี่ยน)
+   ══════════════════════════════════════ */
+function renderAllChart(){
+  var area = document.getElementById('all-chart');
+  var summary = subs.map(function(s){
+    return { id:s.id, total:records.filter(function(r){return r.subId===s.id;}).reduce(function(a,r){return a+(parseFloat(r.used)||0);},0) };
+  }).filter(function(x){return x.total>0;}).sort(function(a,b){return b.total-a.total;});
+  if(!summary.length){ area.innerHTML='<div class="section-empty">📊 ยังไม่มีข้อมูล</div>'; return; }
+  var maxVal = Math.max.apply(null, summary.map(function(x){return x.total;}).concat([1]));
+  area.innerHTML = summary.map(function(x){return '<div class="bar-row"><div class="bar-label">'+x.id+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(x.total/maxVal*100)+'%"></div></div><div class="bar-val">'+Math.round(x.total).toLocaleString()+'</div></div>';}).join('');
+}
+
 </script>
 </body>
 </html>
