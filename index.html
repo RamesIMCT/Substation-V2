@@ -2245,9 +2245,14 @@ function renderSubChart(){
     strokeDash = [0,5];
   }
 
-  var distributed = subChartState.period==='day' && subChartState.showHol;
+  var useDistributed = subChartState.period==='day' && subChartState.showHol && !subChartState.showAvg;
+  var chartType = subChartState.type==='bar' ? 'bar' : 'line';
+
+  // ใส่ type ให้ทุก series เสมอ (ApexCharts mixed chart requirement)
+  series.forEach(function(s){ if(!s.type) s.type = chartType; });
+
   var opts = {
-    chart:{ type:subChartState.type==='bar'?'bar':'line', height:340, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
+    chart:{ type:chartType, height:340, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
       toolbar:{ show:true, tools:{download:true,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true} },
       background:'transparent', animations:{enabled:true,speed:400} },
     series: series,
@@ -2255,11 +2260,11 @@ function renderSubChart(){
     yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
     grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
     tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:function(v){return v!=null?Math.round(v).toLocaleString()+' kWh':'—';}} },
-    colors: distributed ? colors : chartColors,
-    plotOptions:{ bar:{borderRadius:4,columnWidth:'70%',distributed:distributed} },
+    colors: useDistributed ? colors : chartColors,
+    plotOptions:{ bar:{borderRadius:4,columnWidth:'70%',distributed:useDistributed} },
     stroke:{ width:strokeW, dashArray:strokeDash },
-    fill:{ opacity:subChartState.type==='bar'?0.7:0.1 },
-    legend:{ show:subChartState.showAvg&&!distributed, fontSize:'11px', labels:{colors:TC.text2}, markers:{shape:'square',size:6} },
+    fill:{ opacity:chartType==='bar'?0.7:0.1 },
+    legend:{ show:series.length>1, fontSize:'11px', labels:{colors:TC.text2}, markers:{shape:'square',size:6} },
     dataLabels:{ enabled:false },
     states:{ hover:{filter:{type:'lighten',value:0.08}} }
   };
