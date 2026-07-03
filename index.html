@@ -2133,20 +2133,34 @@ function getQuickRange(key){
 }
 
 /* ── Aggregate records by period ── */
-function aggregateRecords(recs, period){
+function aggregateRecords(recs, period, dateFrom, dateTo){
   var MN = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var fmt = function(dt){ return dt.toISOString().slice(0,10); };
+
   if(period === 'day'){
+    // รวมค่าตาม date
     var byDate = {};
     recs.forEach(function(r){
       if(!byDate[r.date]) byDate[r.date] = { used:0, count:0 };
       byDate[r.date].used += parseFloat(r.used)||0;
       byDate[r.date].count++;
     });
-    return Object.entries(byDate).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){
-      var date=e[0], v=e[1];
-      var p = date.split('-').map(Number);
-      return { label:p[2]+'/'+p[1], value:v.used, date:date, hol:getDayType(date)==='holiday' };
-    });
+    // สร้างทุกวันในช่วง from-to (ไม่ข้ามวัน)
+    var dates = Object.keys(byDate).sort();
+    var start = dateFrom || (dates.length ? dates[0] : null);
+    var end = dateTo || (dates.length ? dates[dates.length-1] : null);
+    if(!start || !end) return [];
+    var result = [];
+    var cur = new Date(start+'T00:00:00');
+    var endD = new Date(end+'T00:00:00');
+    while(cur <= endD){
+      var ds = fmt(cur);
+      var p = ds.split('-').map(Number);
+      var val = byDate[ds] ? byDate[ds].used : 0;
+      result.push({ label:p[2]+'/'+p[1], value:val, date:ds, hol:getDayType(ds)==='holiday' });
+      cur.setDate(cur.getDate()+1);
+    }
+    return result;
   }
   if(period === 'month'){
     var byM = {};
@@ -2155,11 +2169,24 @@ function aggregateRecords(recs, period){
       if(!byM[key]) byM[key] = 0;
       byM[key] += parseFloat(r.used)||0;
     });
-    return Object.entries(byM).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){
-      var p = e[0].split('-');
-      return { label:MN[parseInt(p[1])]+' '+p[0], value:e[1], date:e[0] };
-    });
+    // สร้างทุกเดือนในช่วง
+    var months = Object.keys(byM).sort();
+    var startM = dateFrom ? dateFrom.slice(0,7) : (months.length ? months[0] : null);
+    var endM = dateTo ? dateTo.slice(0,7) : (months.length ? months[months.length-1] : null);
+    if(!startM || !endM) return [];
+    var result = [];
+    var sp = startM.split('-').map(Number);
+    var curD = new Date(sp[0], sp[1]-1, 1);
+    var ep = endM.split('-').map(Number);
+    var endD = new Date(ep[0], ep[1]-1, 1);
+    while(curD <= endD){
+      var key = curD.getFullYear()+'-'+String(curD.getMonth()+1).padStart(2,'0');
+      result.push({ label:MN[curD.getMonth()+1]+' '+curD.getFullYear(), value:byM[key]||0, date:key });
+      curD.setMonth(curD.getMonth()+1);
+    }
+    return result;
   }
+  // year
   var byY = {};
   recs.forEach(function(r){
     var y = String(r.date).slice(0,4);
@@ -2222,7 +2249,7 @@ function renderSubChart(){
   if(toVal) recs = recs.filter(function(r){return r.date <= toVal;});
   if(!recs.length){ el.innerHTML='<div class="section-empty">ไม่มีข้อมูลในช่วงที่เลือก</div>'; sumEl.innerHTML=''; return; }
 
-  var data = aggregateRecords(recs, subChartState.period);
+  var data = aggregateRecords(recs, subChartState.period, fromVal, toVal);
   if(!data.length){ el.innerHTML='<div class="section-empty">ไม่มีข้อมูล</div>'; sumEl.innerHTML=''; return; }
 
   var TC = getThemeColors();
