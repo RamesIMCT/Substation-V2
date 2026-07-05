@@ -1339,20 +1339,26 @@ function buildMonthOptions(){
   sel.innerHTML = months.map(m => { const [y,mm]=m.split('-'); return `<option value="${m}">${MN[parseInt(mm)]} ${y}</option>`; }).join('');
 }
 
+let reportReqId = 0;
 async function loadReport(){
+  const thisReq = ++reportReqId;
   const month = document.getElementById('rep-month')?.value;
   if(!month){ document.getElementById('report-area').innerHTML = '<div class="section-empty">ไม่มีข้อมูล</div>'; return; }
   const [y,m] = month.split('-');
   const dateFrom = `${month}-01`;
   const lastDay  = new Date(parseInt(y), parseInt(m), 0).getDate();
-  const dateTo   = `${month}-${String(lastDay).padStart(2,'0')}`;
+  // ดึงเพิ่ม 7 วันหลังสิ้นเดือน เพื่อให้วันสุดท้ายคำนวณ used ได้
+  const extDate  = new Date(parseInt(y), parseInt(m)-1, lastDay+7);
+  const dateTo   = `${extDate.getFullYear()}-${String(extDate.getMonth()+1).padStart(2,'0')}-${String(extDate.getDate()).padStart(2,'0')}`;
   document.getElementById('report-area').innerHTML = '<div class="section-empty">⏳ กำลังโหลด...</div>';
   try{
     const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity:'day' });
+    if(thisReq !== reportReqId) return; // stale request — discard
     if(!res || !res.success) throw new Error(res?.error || 'Server error');
     reportRaw = res.summary || [];
     renderReport(month, lastDay);
   }catch(e){
+    if(thisReq !== reportReqId) return;
     document.getElementById('report-area').innerHTML = `<div class="warn-box">❌ ${e.message}</div>`;
   }
 }
@@ -2368,7 +2374,9 @@ function initG9Pickers(){
   ySel.value = years[years.length-1] || '';
 }
 
+let g9ReqId = 0;
 async function renderG9Chart(){
+  var thisReq = ++g9ReqId;
   var el = document.getElementById('g9-chart-el');
   var sumEl = document.getElementById('g9-chart-summary');
   var TC = getThemeColors();
@@ -2404,6 +2412,7 @@ async function renderG9Chart(){
 
   try{
     var res = await apiPost({ action:'getMonthlySummary', dateFrom:dateFrom, dateTo:dateTo, granularity:'day' });
+    if(thisReq !== g9ReqId) return;
     if(!res||!res.success) throw new Error(res&&res.error||'error');
     var raw = res.summary || [];
     var meterMap = {};
@@ -2493,7 +2502,9 @@ function toggleCmpOpt(){
   renderCmpChart();
 }
 
+let cmpReqId = 0;
 async function renderCmpChart(){
+  var thisReq = ++cmpReqId;
   var groupKey = document.getElementById('cmp-group').value;
   var el = document.getElementById('cmp-chart-el');
   var sumEl = document.getElementById('cmp-chart-summary');
@@ -2510,6 +2521,7 @@ async function renderCmpChart(){
   try{
     var gran = cmpState.period === 'day' ? 'day' : 'month';
     var res = await apiPost({ action:'getMonthlySummary', dateFrom:fromVal, dateTo:toVal, granularity:gran });
+    if(thisReq !== cmpReqId) return;
     if(!res||!res.success) throw new Error(res&&res.error||'error');
     var raw = res.summary || [];
     var meterMap = {};
