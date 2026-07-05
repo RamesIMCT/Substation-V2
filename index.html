@@ -2280,11 +2280,18 @@ function renderSubChart(){
     strokeDash = [0,5];
   }
 
-  var useDistributed = subChartState.period==='day' && subChartState.showHol && !subChartState.showAvg;
+  var useHolColors = subChartState.period==='day' && subChartState.showHol;
   var chartType = subChartState.type==='bar' ? 'bar' : 'line';
 
   // ใส่ type ให้ทุก series เสมอ (ApexCharts mixed chart requirement)
   series.forEach(function(s){ if(!s.type) s.type = chartType; });
+
+  // สีแต่ละแท่ง: ใช้ function แทน distributed (ทำงานร่วมกับ mixed chart ได้)
+  var barColorFn = useHolColors
+    ? function(opts){ var i = opts.dataPointIndex; return colors[i] || TC.green; }
+    : function(){ return TC.green; };
+  var seriesColors = [barColorFn];
+  if(subChartState.showAvg) seriesColors.push(TC.accent+'77');
 
   var opts = {
     chart:{ type:chartType, height:340, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
@@ -2295,8 +2302,8 @@ function renderSubChart(){
     yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
     grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
     tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:function(v){return v!=null?Math.round(v).toLocaleString()+' kWh':'—';}} },
-    colors: useDistributed ? colors : chartColors,
-    plotOptions:{ bar:{borderRadius:4,columnWidth:'70%',distributed:useDistributed} },
+    colors: seriesColors,
+    plotOptions:{ bar:{borderRadius:4,columnWidth:'70%'} },
     stroke:{ width:strokeW, dashArray:strokeDash },
     fill:{ opacity:chartType==='bar'?0.7:0.8 },
     legend:{ show:series.length>1, fontSize:'11px', labels:{colors:TC.text2}, markers:{shape:'square',size:6} },
