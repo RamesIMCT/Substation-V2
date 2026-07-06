@@ -6,9 +6,7 @@
 <title>⚡ ระบบจดบันทึกค่าพลังงาน Substation SR Plant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.50.0/dist/apexcharts.min.js"></script>
+<!-- CDN โหลดแบบ lazy เมื่อใช้งานจริง (qrcode/xlsx/apexcharts) — ดู loadScript() -->
 <style>
 /* ══════════════════════════════════════════════════════
    DESIGN TOKENS
@@ -1176,6 +1174,59 @@ async function apiPost(body, retries = 2){
     }
   }
 }
+
+/* ════════════ SUMMARY API CACHE ════════════
+   Cache getMonthlySummary โดย key = dateFrom|dateTo|granularity
+   ทั้ง 3 กราฟ (report, g9, cmp) ใช้ endpoint เดียวกัน จึงแชร์ cache ได้
+   invalidate เมื่อ save/edit/delete record หรือแก้ปฏิทิน
+*/
+let summaryCache = {};
+async function getSummaryCached(dateFrom, dateTo, granularity){
+  const key = `${dateFrom||''}|${dateTo||''}|${granularity||'day'}`;
+  if(summaryCache[key]) return summaryCache[key];
+  const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity });
+  if(res && res.success) summaryCache[key] = res;  // cache เฉพาะ response ที่สำเร็จ
+  return res;
+}
+function invalidateSummaryCache(){ summaryCache = {}; }
+
+/* ════════════ SAFE CHART TEARDOWN ════════════
+   ป้องกัน crash "Cannot read properties of undefined (reading 'node')"
+   จากการ destroy() chart ที่ยัง mount ไม่เสร็จ (v3 rapid-toggle bug)
+   fixed ใน v5.15.1+ แต่เรายังอยู่ v3.50.0 จึง guard เอง
+*/
+function safeDestroyChart(inst){
+  if(!inst) return;
+  try{ inst.destroy(); }
+  catch(e){ console.warn('chart destroy guarded:', e && e.message); }
+}
+
+/* ════════════ LAZY CDN LOADER ════════════
+   โหลด library เมื่อใช้จริง ไม่โหลดตอนเปิดแอป (ลดเวลาโหลดหน้าแรก ~655KB)
+   cache promise ต่อ url — เรียกซ้ำได้ไม่โหลดซ้ำ
+*/
+const _scriptPromises = {};
+function loadScript(url){
+  if(_scriptPromises[url]) return _scriptPromises[url];
+  _scriptPromises[url] = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = () => resolve();
+    s.onerror = () => { delete _scriptPromises[url]; reject(new Error('โหลด script ไม่ได้: '+url)); };
+    document.head.appendChild(s);
+  });
+  return _scriptPromises[url];
+}
+const CDN = {
+  qrcode:     'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+  xlsx:       'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  apexcharts: 'https://cdn.jsdelivr.net/npm/apexcharts@3.50.0/dist/apexcharts.min.js'
+};
+// โหลดเฉพาะเมื่อยังไม่มี global (กัน double-load)
+function ensureQRCode(){    return (typeof QRCode!=='undefined')    ? Promise.resolve() : loadScript(CDN.qrcode); }
+function ensureXLSX(){      return (typeof XLSX!=='undefined')      ? Promise.resolve() : loadScript(CDN.xlsx); }
+function ensureApex(){      return (typeof ApexCharts!=='undefined') ? Promise.resolve() : loadScript(CDN.apexcharts); }
+
 function setSyncStatus(status, msg){
   const dot = document.getElementById('sync-dot');
   const ban = document.getElementById('sync-banner');
@@ -1200,7 +1251,7 @@ function loadFromServer(){
       if(data.subs     && Array.isArray(data.subs))     subs         = data.subs;
       if(data.records  && Array.isArray(data.records))  records      = computeUsed(data.records);
       if(data.calendar && Array.isArray(data.calendar)) workCalendar = data.calendar;
-      persist(); isConnected = true; renderAll();
+      persist(); isConnected = true; invalidateSummaryCache(); renderAll();
       // ✅ ถ้ากำลังอยู่หน้ากรอก อัปเดตปุ่ม save ให้เป็นออนไลน์
       if(activeSub){
         const sb = document.getElementById('save-btn');
@@ -1223,7 +1274,7 @@ function refreshData(){
       if(data.subs     && Array.isArray(data.subs))     subs         = data.subs;
       if(data.records  && Array.isArray(data.records))  records      = computeUsed(data.records);
       if(data.calendar && Array.isArray(data.calendar)) workCalendar = data.calendar;
-      persist(); isConnected = true; renderAll();
+      persist(); isConnected = true; invalidateSummaryCache(); renderAll();
       setSyncStatus('ok',`โหลดสำเร็จ — ${subs.length} ตู้`);
     })
     .catch(err => {
@@ -1352,7 +1403,7 @@ async function loadReport(){
   const dateTo   = `${extDate.getFullYear()}-${String(extDate.getMonth()+1).padStart(2,'0')}-${String(extDate.getDate()).padStart(2,'0')}`;
   document.getElementById('report-area').innerHTML = '<div class="section-empty">⏳ กำลังโหลด...</div>';
   try{
-    const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity:'day' });
+    const res = await getSummaryCached(dateFrom, dateTo, 'day');
     if(thisReq !== reportReqId) return; // stale request — discard
     if(!res || !res.success) throw new Error(res?.error || 'Server error');
     reportRaw = res.summary || [];
@@ -1463,8 +1514,9 @@ function renderReport(month, lastDay){
   buildCompareGroupOptions();
 }
 
-function exportReportExcel(){
+async function exportReportExcel(){
   if(!reportComputed) return toast('ยังไม่มีข้อมูล','err');
+  try{ await ensureXLSX(); }catch(e){ return toast('โหลด Excel library ไม่ได้','err'); }
   const { month, rows, totals } = reportComputed;
   const mm = parseInt(month.split('-')[1]);
   const aoa = [];
@@ -1530,13 +1582,13 @@ async function addCalendarDay(){
   persist(); renderCalendarList();
   document.getElementById('cal-date').value = ''; document.getElementById('cal-note').value = '';
   toast('✅ เพิ่มวันพิเศษแล้ว','ok');
-  try{ await apiPost({ action:'setCalendarDay', date, type, note }); }catch(e){ toast('⚠️ Sync ปฏิทินล้มเหลว','warn'); }
+  try{ await apiPost({ action:'setCalendarDay', date, type, note }); invalidateSummaryCache(); }catch(e){ toast('⚠️ Sync ปฏิทินล้มเหลว','warn'); }
 }
 async function removeCalendarDay(date){
   if(!confirm(`ลบวันพิเศษ ${fmtDate(date)}?`)) return;
   workCalendar = workCalendar.filter(c => c.date !== date);
   persist(); renderCalendarList(); toast('ลบแล้ว');
-  try{ await apiPost({ action:'deleteCalendarDay', date }); }catch(e){}
+  try{ await apiPost({ action:'deleteCalendarDay', date }); invalidateSummaryCache(); }catch(e){}
 }
 function renderCalendarList(){
   const box = document.getElementById('cal-list');
@@ -1758,6 +1810,7 @@ async function doSaveRecord(sub, kwh, date, time, user, note){
   try{
     const payload = { id:rec.id, subId:rec.subId, subName:rec.subName, zone:rec.zone, date:rec.date, time:rec.time, kwh:rec.kwh, user:rec.user, note:rec.note, ts:rec.ts, editedTs:'', editedBy:'' };
     await apiPost({ action:'saveRecord', record:payload });
+    invalidateSummaryCache();
     setSyncStatus('ok','บันทึกลง Sheets แล้ว');
   }catch(e){
     setSyncStatus('error','บันทึกในเครื่องแล้ว — Sync ล้มเหลว');
@@ -1830,6 +1883,7 @@ async function saveEdit(){
   try{
     const payload = { id:saved.id, subId:saved.subId, subName:saved.subName, zone:saved.zone, date:saved.date, time:saved.time, kwh:saved.kwh, user:saved.user, note:saved.note, ts:saved.ts, editedTs:saved.editedTs, editedBy:saved.editedBy };
     await apiPost({ action:'editRecord', record:payload });
+    invalidateSummaryCache();
     setSyncStatus('ok','แก้ไขสำเร็จ');
   }catch(e){ setSyncStatus('error','แก้ในเครื่องแล้ว — Sync ล้มเหลว'); }
 }
@@ -1841,7 +1895,7 @@ async function deleteRecord(id){
   records = computeUsed(records); persist();
   toast('ลบแล้ว'); renderAll();
   setSyncStatus('busy','กำลังลบจาก Sheets...');
-  try{ await apiPost({ action:'deleteRecord', id:String(id) }); setSyncStatus('ok','ลบสำเร็จ'); }
+  try{ await apiPost({ action:'deleteRecord', id:String(id) }); invalidateSummaryCache(); setSyncStatus('ok','ลบสำเร็จ'); }
   catch(e){ setSyncStatus('error','Offline — จะ sync เมื่อเชื่อมต่อได้'); }
 }
 
@@ -1955,6 +2009,7 @@ function renderQR(){
 
   if(!list.length){ grid.innerHTML = '<div class="section-empty">ไม่มีตู้ใน Zone นี้</div>'; return; }
 
+  ensureQRCode().catch(function(e){ grid.innerHTML = '<div class="warn-box">❌ โหลด QR library ไม่ได้</div>'; });
   list.forEach(sub => {
     const url = QR_BASE_URL.replace(/\/$/, '') + '?sub=' + encodeURIComponent(sub.id);
     const qid = 'qr_' + sub.id.replace(/\W/g,'_');
@@ -1962,12 +2017,14 @@ function renderQR(){
     div.className = 'qr-item';
     div.innerHTML = `<div class="qi-id">${sub.id}</div><div class="qi-name">${sub.name}<br><span style="color:var(--purple)">${sub.zone}</span></div><div class="qi-qr" id="${qid}"></div><div class="qi-url">${url.length>55 ? url.slice(0,52)+'…' : url}</div>`;
     grid.appendChild(div);
-    setTimeout(() => {
+    ensureQRCode().then(function(){
+      const elQ = document.getElementById(qid);
+      if(!elQ) return;
       try{
-        document.getElementById(qid).innerHTML = '';
-        new QRCode(document.getElementById(qid), { text:url, width:110, height:110, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M });
+        elQ.innerHTML = '';
+        new QRCode(elQ, { text:url, width:110, height:110, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M });
       }catch(e){}
-    }, 80);
+    });
   });
 }
 
@@ -2018,10 +2075,11 @@ function removeSub(i){
 }
 
 /* ════════════ EXPORT / IMPORT ════════════ */
-function exportExcel(){
+async function exportExcel(){
   const hasFilter    = isFilterActive();
   const dataToExport = hasFilter ? [...filteredRecords] : [...records].reverse();
   if(!dataToExport.length) return toast(hasFilter?'ไม่มีข้อมูลตาม Filter':'ยังไม่มีข้อมูล','err');
+  try{ await ensureXLSX(); }catch(e){ return toast('โหลด Excel library ไม่ได้','err'); }
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(dataToExport.map(r => ({
     'ID': r.id, 'Substation ID': r.subId, 'Substation Name': r.subName, 'Zone': r.zone,
@@ -2311,10 +2369,12 @@ function renderSubChart(){
     states:{ hover:{filter:{type:'lighten',value:0.08}} }
   };
 
-  if(subChartInst) subChartInst.destroy();
-  el.innerHTML = '';
-  subChartInst = new ApexCharts(el, opts);
-  subChartInst.render();
+  ensureApex().then(function(){
+    safeDestroyChart(subChartInst);
+    el.innerHTML = '';
+    subChartInst = new ApexCharts(el, opts);
+    subChartInst.render();
+  }).catch(function(e){ el.innerHTML = '<div class="warn-box">❌ โหลดกราฟไม่ได้: '+(e&&e.message||'')+'</div>'; });
 
   sumEl.innerHTML = '<span class="chip chip-green">⚡ รวม '+Math.round(total).toLocaleString()+' kWh</span> '+
     '<span class="chip chip-green">เฉลี่ย '+Math.round(avg).toLocaleString()+' kWh/'+pl+'</span> '+
@@ -2418,7 +2478,7 @@ async function renderG9Chart(){
   }
 
   try{
-    var res = await apiPost({ action:'getMonthlySummary', dateFrom:dateFrom, dateTo:dateTo, granularity:'day' });
+    var res = await getSummaryCached(dateFrom, dateTo, 'day');
     if(thisReq !== g9ReqId) return;
     if(!res||!res.success) throw new Error(res&&res.error||'error');
     var raw = res.summary || [];
@@ -2465,7 +2525,9 @@ async function renderG9Chart(){
       states:{ hover:{filter:{type:'lighten',value:0.08}} }
     };
 
-    if(g9ChartInst) g9ChartInst.destroy();
+    await ensureApex();
+    if(thisReq !== g9ReqId) return;
+    safeDestroyChart(g9ChartInst);
     el.innerHTML = '';
     g9ChartInst = new ApexCharts(el, opts);
     g9ChartInst.render();
@@ -2527,7 +2589,7 @@ async function renderCmpChart(){
 
   try{
     var gran = cmpState.period === 'day' ? 'day' : 'month';
-    var res = await apiPost({ action:'getMonthlySummary', dateFrom:fromVal, dateTo:toVal, granularity:gran });
+    var res = await getSummaryCached(fromVal, toVal, gran);
     if(thisReq !== cmpReqId) return;
     if(!res||!res.success) throw new Error(res&&res.error||'error');
     var raw = res.summary || [];
@@ -2590,7 +2652,9 @@ async function renderCmpChart(){
       states:{ hover:{filter:{type:'lighten',value:0.08}} }
     };
 
-    if(cmpChartInst) cmpChartInst.destroy();
+    await ensureApex();
+    if(thisReq !== cmpReqId) return;
+    safeDestroyChart(cmpChartInst);
     el.innerHTML = '';
     cmpChartInst = new ApexCharts(el, opts);
     cmpChartInst.render();
