@@ -1214,8 +1214,13 @@ async function apiPost(body, retries = 2){
 let summaryCache = {};
 async function getSummaryCached(dateFrom, dateTo, granularity){
   const key = `${dateFrom||''}|${dateTo||''}|${granularity||'day'}`;
-  if(summaryCache[key]) return summaryCache[key];
+  if(summaryCache[key]){
+    if(DEBUG_PERF) console.log(`⏱ getSummaryCached [HIT] ${key}: 0 ms (cached)`);
+    return summaryCache[key];
+  }
+  const _t0 = (DEBUG_PERF && performance.now()) || 0;
   const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity });
+  if(DEBUG_PERF) console.log(`⏱ getSummaryCached [MISS→network] ${key}: ${(performance.now()-_t0).toFixed(0)} ms`);
   if(res && res.success) summaryCache[key] = res;  // cache เฉพาะ response ที่สำเร็จ
   return res;
 }
