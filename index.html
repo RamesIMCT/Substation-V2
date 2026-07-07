@@ -1156,6 +1156,37 @@ function toggleTheme(){
 }
 
 /* ════════════ API ════════════ */
+/* ════════════ PERF INSTRUMENTATION (DEBUG only) ════════════
+   วัดคอขวดจริงด้วย performance.mark/measure — เปิด/ปิดด้วย DEBUG_PERF
+   Production: ตั้ง DEBUG_PERF=false → เป็น no-op ทั้งหมด (ไม่มี overhead)
+   วิธีใช้: เปิด console → ตั้ง window.DEBUG_PERF=true → กดใช้งาน → อ่าน log
+   ⚠️ อย่าลืม: perfEnd() ต้อง clearMeasures เพื่อกัน entry สะสมข้าม warm runs
+*/
+let DEBUG_PERF = false;
+try { if(location.search.indexOf('perf=1')>=0) DEBUG_PERF = true; } catch(e){}
+const _perfSeen = new Set();
+function perfLabel(name){
+  if(!_perfSeen.has(name)){ _perfSeen.add(name); return name+' [COLD]'; }
+  return name+' [WARM]';
+}
+function perfStart(name){
+  if(!DEBUG_PERF) return;
+  performance.mark(name+'-start');
+}
+function perfEnd(name){
+  if(!DEBUG_PERF) return;
+  performance.mark(name+'-end');
+  try{
+    performance.measure(name, name+'-start', name+'-end');
+    const entry = performance.getEntriesByName(name).pop();
+    if(entry) console.log(`⏱ ${name}: ${entry.duration.toFixed(2)} ms`);
+  }catch(e){ /* mark missing — ignore */ }
+  // สำคัญ: เคลียร์เพื่อกัน entry สะสมข้าม warm runs
+  performance.clearMarks(name+'-start');
+  performance.clearMarks(name+'-end');
+  performance.clearMeasures(name);
+}
+
 async function apiPost(body, retries = 2){
   for(let attempt = 0; attempt <= retries; attempt++){
     const ctrl = new AbortController();
@@ -1304,6 +1335,7 @@ async function testConn(){
 
 /* ════════════ COMPUTE USED ════════════ */
 function computeUsed(rawRecords){
+  const _pl = perfLabel('computeUsed(n='+rawRecords.length+')'); perfStart(_pl);
   rawRecords.forEach(r => { if(r.date && String(r.date).includes('T')) r.date = String(r.date).slice(0, 10); });
   const groups = {};
   rawRecords.forEach(r => { if(!groups[r.subId]) groups[r.subId]=[]; groups[r.subId].push(r); });
@@ -1316,7 +1348,9 @@ function computeUsed(rawRecords){
       else { const diff = parseFloat(chain[i+1].kwh) - parseFloat(rec.kwh); rec.used = Math.max(0, diff) * multiplier; }
     });
   });
-  return Object.values(groups).flat();
+  const _out = Object.values(groups).flat();
+  perfEnd(_pl);
+  return _out;
 }
 
 /* ════════════ INIT ════════════ */
@@ -1443,11 +1477,14 @@ function sumGroupOnDay(meterMap, col, dateStr, allDates){
 function renderReport(month, lastDay){
   const area = document.getElementById('report-area');
   if(!reportRaw.length){ area.innerHTML = '<div class="section-empty">📭 ไม่มีข้อมูลเดือนนี้</div>'; return; }
+  const _plMap = perfLabel('buildMeterDayMap'); perfStart(_plMap);
   const meterMap = buildMeterDayMap();
+  perfEnd(_plMap);
   const allDates = [...new Set(reportRaw.map(r => r.period))].sort();
   const days = [];
   for(let d = 1; d <= lastDay; d++) days.push(`${month}-${String(d).padStart(2,'0')}`);
 
+  const _plRows = perfLabel('renderReport:rowsCompute'); perfStart(_plRows);
   const rows = days.map(dateStr => {
     const cells = {};
     REPORT_MAIN.forEach(c => cells[c.key] = sumGroupOnDay(meterMap, c, dateStr, allDates));
@@ -1465,6 +1502,7 @@ function renderReport(month, lastDay){
   [...REPORT_MAIN.map(c=>c.key), ...REPORT_UTIL.map(c=>c.key), 'UTILITY','TOTAL'].forEach(k => {
     totals[k] = rows.reduce((a,r) => a + (r.cells[k]||0), 0);
   });
+  perfEnd(_plRows);
   reportComputed = { month, rows, totals };
 
   const fmtCell = v => v === null ? '<span style="color:var(--text-3)">—</span>' : Math.round(v).toLocaleString();
@@ -2306,14 +2344,16 @@ function renderSubChart(){
   var sumEl = document.getElementById('sub-chart-summary');
   if(!subId){ el.innerHTML='<div class="section-empty">เลือก Substation เพื่อดูกราฟ</div>'; sumEl.innerHTML=''; return; }
 
+  var _plSub = perfLabel('renderSubChart:compute'); perfStart(_plSub);
   var fromVal = document.getElementById('sub-from').value || '';
   var toVal = document.getElementById('sub-to').value || '';
   var recs = getSubRecs(subId);
   if(fromVal) recs = recs.filter(function(r){return r.date >= fromVal;});
   if(toVal) recs = recs.filter(function(r){return r.date <= toVal;});
-  if(!recs.length){ el.innerHTML='<div class="section-empty">ไม่มีข้อมูลในช่วงที่เลือก</div>'; sumEl.innerHTML=''; return; }
+  if(!recs.length){ perfEnd(_plSub); el.innerHTML='<div class="section-empty">ไม่มีข้อมูลในช่วงที่เลือก</div>'; sumEl.innerHTML=''; return; }
 
   var data = aggregateRecords(recs, subChartState.period, fromVal, toVal);
+  perfEnd(_plSub);
   if(!data.length){ el.innerHTML='<div class="section-empty">ไม่มีข้อมูล</div>'; sumEl.innerHTML=''; return; }
 
   var TC = getThemeColors();
@@ -2351,10 +2391,12 @@ function renderSubChart(){
   var seriesColors = [barColorFn];
   if(subChartState.showAvg) seriesColors.push(TC.accent+'77');
 
+  if(DEBUG_PERF) perfStart('renderSubChart:mount');
   var opts = {
     chart:{ type:chartType, height:340, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
       toolbar:{ show:true, tools:{download:true,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true} },
-      background:'transparent', animations:{enabled:true,speed:400} },
+      background:'transparent', animations:{enabled:true,speed:400},
+      events:{ mounted:function(){ if(DEBUG_PERF){ perfEnd('renderSubChart:mount'); } } } },
     series: series,
     xaxis:{ categories:labels, axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{style:{fontSize:'10px',colors:TC.text3}} },
     yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
@@ -2490,6 +2532,7 @@ async function renderG9Chart(){
     if(g9State.period==='day') countPeriods = [pick];
     else countPeriods = allPeriods.filter(function(p){return p.startsWith(pick);});
 
+    var _plG9 = perfLabel('renderG9Chart:compute'); perfStart(_plG9);
     var groupVals = REPORT_MAIN.map(function(col){
       var total = 0;
       countPeriods.forEach(function(p){
@@ -2498,6 +2541,7 @@ async function renderG9Chart(){
       });
       return { name:col.name, value:total, color:GROUP_COLORS[col.name]||TC.accent };
     });
+    perfEnd(_plG9);
 
     if(g9State.sort==='desc') groupVals.sort(function(a,b){return b.value-a.value;});
     else if(g9State.sort==='asc') groupVals.sort(function(a,b){return a.value-b.value;});
