@@ -949,7 +949,7 @@ function getCategoryOf(subId){
 }
 
 /* ───────── CONFIG ───────── */
-const API_URL     = 'https://script.google.com/macros/s/AKfycbxskNQWn4lwsi4Muh4Of3BkDuz3qbuWirhUQ233yKlbFy8RlIAUlfm53BD1x1IAHiTvPQ/exec';
+const API_URL     = 'https://script.google.com/macros/s/AKfycbzrnpJ9gNIp40DbgtMjrYs0WucctdarShas7Br17lgSBkVjBk9G1rMbaY7pC39XB9TgFg/exec';
 const QR_BASE_URL = 'https://ramesimct.github.io/Substation-V2/';
 const ABNORMAL_MULTIPLIER = 5;
 
@@ -2092,26 +2092,40 @@ function renderSubList(){
     </div>`;
   }).join('');
 }
-function addSub(){
+async function addSub(){
   const id      = document.getElementById('new-id').value.trim().toUpperCase();
   const name    = document.getElementById('new-name').value.trim();
   const decimal = parseInt(document.getElementById('new-decimal').value) || 0;
   const zone    = document.getElementById('new-zone').value.trim() || 'Custom';
   if(!id || !name) return toast('กรอก ID และชื่อด้วย','err');
   if(subs.find(s => s.id === id)) return toast('ID นี้มีอยู่แล้ว','err');
-  subs.push({ id, name, zone, decimal, multiplier:1, unit:'kWh' });
+  const newSub = { id, name, zone, decimal, multiplier:1, unit:'kWh' };
+  // บันทึก backend ก่อน — ถ้าล้มเหลว ไม่เพิ่มใน local (กัน state หลุด)
+  try{
+    const res = await apiPost({ action:'updateSubConfig', sub:newSub });
+    if(!res || !res.success) return toast('บันทึกไม่สำเร็จ: ' + (res && res.error || 'server error'),'err');
+  }catch(e){
+    return toast('บันทึกไม่สำเร็จ: ' + e.message,'err');
+  }
+  subs.push(newSub);
   persist();
   ['new-id','new-name','new-zone'].forEach(x => { document.getElementById(x).value=''; });
   document.getElementById('new-decimal').value = '0';
   renderSubList(); renderZoneAreas(); populateDDs();
   toast('✅ เพิ่ม ' + id,'ok');
-  apiPost({ action:'updateSubConfig', sub:subs[subs.length-1] }).catch(()=>{});
 }
-function removeSub(i){
+async function removeSub(i){
   const s   = subs[i];
   const cnt = records.filter(r => r.subId === s.id).length;
-  const msg = cnt > 0 ? `ลบ ${s.id} — ${s.name}?\n(มีข้อมูล ${cnt} records ที่เชื่อมกับตู้นี้)` : `ลบ ${s.id} — ${s.name}?`;
+  const msg = cnt > 0 ? `ลบ ${s.id} — ${s.name}?\n(มีข้อมูล ${cnt} records ที่เชื่อมกับตู้นี้ — records จะยังอยู่)` : `ลบ ${s.id} — ${s.name}?`;
   if(!confirm(msg)) return;
+  // ลบ backend ก่อน — ถ้าล้มเหลว ไม่ลบ local (กัน state หลุด)
+  try{
+    const res = await apiPost({ action:'deleteSub', id:s.id });
+    if(!res || !res.success) return toast('ลบไม่สำเร็จ: ' + (res && res.error || 'server error'),'err');
+  }catch(e){
+    return toast('ลบไม่สำเร็จ: ' + e.message,'err');
+  }
   subs.splice(i, 1); persist();
   renderSubList(); renderZoneAreas(); populateDDs();
   toast('ลบ ' + s.id);
@@ -2403,11 +2417,12 @@ function renderSubChart(){
       background:'transparent', animations:{enabled:true,speed:400},
       events:{ mounted:function(){ if(DEBUG_PERF){ perfEnd('renderSubChart:mount'); } } } },
     series: series,
-    xaxis:{ categories:labels, axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{style:{fontSize:'10px',colors:TC.text3}} },
+    xaxis:{ categories:labels, axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{rotate:0, rotateAlways:false, hideOverlappingLabels:true, trim:false, style:{fontSize:'10px',colors:TC.text3}} },
     yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
     grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
     tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:function(v){return v!=null?Math.round(v).toLocaleString()+' kWh':'—';}} },
     colors: seriesColors,
+    responsive:[{ breakpoint:640, options:{ chart:{height:300}, xaxis:{labels:{rotate:-45, rotateAlways:true, hideOverlappingLabels:true, style:{fontSize:'8px'}}}, plotOptions:{bar:{columnWidth:'80%'}} } }],
     plotOptions:{ bar:{borderRadius:4,columnWidth:'70%'} },
     stroke:{ width:strokeW, dashArray:strokeDash },
     fill:{ opacity:chartType==='bar'?0.7:0.8 },
@@ -2562,11 +2577,12 @@ async function renderG9Chart(){
         toolbar:{ show:true, tools:{download:true,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true} },
         background:'transparent', animations:{enabled:true,speed:400} },
       series:[{ name:'ใช้ไฟ (kWh)', data:groupVals.map(function(g){return Math.round(g.value);}) }],
-      xaxis:{ categories:groupVals.map(function(g){return g.name;}), axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{style:{fontSize:'9px',colors:TC.text3}} },
+      xaxis:{ categories:groupVals.map(function(g){return g.name;}), axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{rotate:-45, rotateAlways:true, hideOverlappingLabels:false, trim:true, maxHeight:80, style:{fontSize:'9px',colors:TC.text3}} },
       yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
       grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
       tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:tooltipFmt} },
       colors:groupVals.map(function(g){return g.color;}),
+      responsive:[{ breakpoint:640, options:{ chart:{height:300}, xaxis:{labels:{rotate:-55, rotateAlways:true, hideOverlappingLabels:false, trim:true, maxHeight:100, style:{fontSize:'8px'}}}, plotOptions:{bar:{columnWidth:'75%'}} } }],
       plotOptions:{ bar:{borderRadius:6,columnWidth:'65%',distributed:true} },
       fill:{ opacity:0.7 },
       legend:{ show:false },
@@ -2688,11 +2704,12 @@ async function renderCmpChart(){
         toolbar:{ show:true, tools:{download:true,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true} },
         background:'transparent', animations:{enabled:true,speed:400} },
       series: series,
-      xaxis:{ categories:labels, axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{style:{fontSize:'10px',colors:TC.text3}} },
+      xaxis:{ categories:labels, axisBorder:{color:TC.border}, axisTicks:{show:false}, labels:{rotate:0, rotateAlways:false, hideOverlappingLabels:true, trim:false, style:{fontSize:'10px',colors:TC.text3}} },
       yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
       grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
       tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:function(v){return v!=null?Math.round(v).toLocaleString()+' kWh':'—';}} },
       colors: chartColors,
+      responsive:[{ breakpoint:640, options:{ chart:{height:300}, xaxis:{labels:{rotate:-45, rotateAlways:true, hideOverlappingLabels:true, style:{fontSize:'8px'}}}, plotOptions:{bar:{columnWidth:'80%'}} } }],
       plotOptions:{ bar:{borderRadius:4,columnWidth:'70%'} },
       stroke:{ width:strokeW, dashArray:strokeDash },
       fill:{ opacity:cmpState.type==='bar'?0.6:0.7 },
