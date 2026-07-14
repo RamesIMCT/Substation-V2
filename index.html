@@ -2396,6 +2396,18 @@ function renderSubChart(){
   var avg = data.length ? total/data.length : 0;
   var pl = subChartState.period==='day'?'วัน':subChartState.period==='month'?'เดือน':'ปี';
 
+  // แยกค่าเฉลี่ยวันทำงาน/วันหยุด (เฉพาะ day mode — month/year ไม่มีแนวคิดวันหยุด)
+  var avgWork = null, avgHol = null, nWork = 0, nHol = 0;
+  if(subChartState.period === 'day'){
+    var sumWork = 0, sumHol = 0;
+    data.forEach(function(d){
+      if(d.hol){ sumHol += d.value; nHol++; }
+      else { sumWork += d.value; nWork++; }
+    });
+    avgWork = nWork ? sumWork/nWork : 0;
+    avgHol  = nHol  ? sumHol/nHol  : 0;
+  }
+
   var colors = data.map(function(d){ return subChartState.showHol && d.hol ? TC.orange : TC.green; });
   var values = data.map(function(d){return Math.round(d.value);});
   var labels = data.map(function(d){return d.label;});
@@ -2406,7 +2418,8 @@ function renderSubChart(){
   var strokeDash = [0];
 
   if(subChartState.showAvg){
-    var avgRound = Math.round(avg);
+    // day mode: เส้นเฉลี่ยอ้างอิงวันทำงาน (baseline ที่มีความหมาย) ไม่ใช่ค่าเฉลี่ยปนวันหยุด
+    var avgRound = Math.round(subChartState.period === 'day' ? avgWork : avg);
     series.push({ name:'ค่าเฉลี่ย', data:data.map(function(){return avgRound;}), type:'line' });
     chartColors.push(TC.accent+'77');
     strokeW = subChartState.type==='bar' ? [0,2] : [2.5,2];
@@ -2454,8 +2467,16 @@ function renderSubChart(){
     subChartInst.render();
   }).catch(function(e){ el.innerHTML = '<div class="warn-box">❌ โหลดกราฟไม่ได้: '+(e&&e.message||'')+'</div>'; });
 
+  var avgChips;
+  if(subChartState.period === 'day' && (nWork || nHol)){
+    // แยก 2 ค่า: วันทำงาน (เขียว) / วันหยุด (ส้ม)
+    avgChips = '<span class="chip chip-green">เฉลี่ยวันทำงาน '+Math.round(avgWork).toLocaleString()+' kWh ('+nWork+' วัน)</span> '+
+               '<span class="chip" style="background:rgba(251,146,60,.15);color:var(--orange);border:1px solid rgba(251,146,60,.4)">เฉลี่ยวันหยุด '+Math.round(avgHol).toLocaleString()+' kWh ('+nHol+' วัน)</span>';
+  } else {
+    avgChips = '<span class="chip chip-green">เฉลี่ย '+Math.round(avg).toLocaleString()+' kWh/'+pl+'</span>';
+  }
   sumEl.innerHTML = '<span class="chip chip-green">⚡ รวม '+Math.round(total).toLocaleString()+' kWh</span> '+
-    '<span class="chip chip-green">เฉลี่ย '+Math.round(avg).toLocaleString()+' kWh/'+pl+'</span> '+
+    avgChips + ' '+
     '<span class="chip" style="background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border)">'+data.length+' '+pl+'</span>';
 }
 
@@ -2653,6 +2674,42 @@ function toggleCmpOpt(){
 }
 
 let cmpReqId = 0;
+// สร้างรายการ period ต่อเนื่อง (วัน/เดือน) ในช่วง from-to — fill ที่ขาด
+// ถ้าไม่ระบุ from/to → ใช้ขอบเขตจาก allPeriods ที่มี
+function _cmpFillPeriods(allPeriods, fromVal, toVal, period){
+  if(!allPeriods.length && !(fromVal && toVal)) return [];
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  if(period === 'day'){
+    var start = fromVal || allPeriods[0];
+    var end   = toVal   || allPeriods[allPeriods.length-1];
+    if(!start || !end) return allPeriods.slice();
+    var out = [];
+    var cur = new Date(start+'T00:00:00');
+    var stop = new Date(end+'T00:00:00');
+    // guard: ช่วงกว้างเกิน 400 วัน → ไม่ fill (กัน loop ยาว) คืนของเดิม
+    if((stop - cur)/86400000 > 400) return allPeriods.slice();
+    while(cur <= stop){
+      out.push(cur.getFullYear()+'-'+pad(cur.getMonth()+1)+'-'+pad(cur.getDate()));
+      cur.setDate(cur.getDate()+1);
+    }
+    return out;
+  }
+  // month
+  var startM = (fromVal ? fromVal.slice(0,7) : (allPeriods[0]||'').slice(0,7));
+  var endM   = (toVal   ? toVal.slice(0,7)   : (allPeriods[allPeriods.length-1]||'').slice(0,7));
+  if(!startM || !endM) return allPeriods.slice();
+  var sp = startM.split('-').map(Number);
+  var ep = endM.split('-').map(Number);
+  var out2 = [];
+  var y=sp[0], m=sp[1];
+  var guard=0;
+  while((y < ep[0] || (y===ep[0] && m <= ep[1])) && guard++ < 400){
+    out2.push(y+'-'+pad(m));
+    m++; if(m>12){ m=1; y++; }
+  }
+  return out2;
+}
+
 async function renderCmpChart(){
   var thisReq = ++cmpReqId;
   var groupKey = document.getElementById('cmp-group').value;
@@ -2684,13 +2741,20 @@ async function renderCmpChart(){
       allPeriods.forEach(function(p){ ids.forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null) byYear[p.slice(0,4)]=(byYear[p.slice(0,4)]||0)+u; }); });
       dataPoints = Object.entries(byYear).map(function(e){return {label:e[0],value:e[1]};});
     } else {
-      dataPoints = allPeriods.map(function(p){
+      // คำนวณค่าต่อ period ที่มีข้อมูล
+      var valByPeriod = {};
+      allPeriods.forEach(function(p){
         var total=0, has=false;
         ids.forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null){total+=u;has=true;} });
+        valByPeriod[p] = has ? total : 0;
+      });
+      // สร้างทุก period ในช่วง (fill วัน/เดือนที่ขาดด้วย 0 → กราฟต่อเนื่อง ไม่ข้าม)
+      var fullPeriods = _cmpFillPeriods(allPeriods, fromVal, toVal, cmpState.period);
+      dataPoints = fullPeriods.map(function(p){
         var label;
         if(cmpState.period==='day') label=parseInt(p.split('-')[2])+'/'+parseInt(p.split('-')[1]);
         else label=MN[parseInt(p.split('-')[1])]+' '+p.slice(0,4);
-        return { label:label, value:has?total:0 };
+        return { label:label, value:valByPeriod[p]||0, hol:(cmpState.period==='day' && getDayType(p)==='holiday') };
       });
     }
 
@@ -2699,6 +2763,18 @@ async function renderCmpChart(){
     var total = dataPoints.reduce(function(a,d){return a+d.value;},0);
     var avg = dataPoints.length ? total/dataPoints.length : 0;
     var pl = cmpState.period==='day'?'วัน':cmpState.period==='month'?'เดือน':'ปี';
+
+    // แยกค่าเฉลี่ยวันทำงาน/วันหยุด (เฉพาะ day mode)
+    var cmpAvgWork = 0, cmpAvgHol = 0, cmpNWork = 0, cmpNHol = 0;
+    if(cmpState.period === 'day'){
+      var cSumW = 0, cSumH = 0;
+      dataPoints.forEach(function(d){
+        if(d.hol){ cSumH += d.value; cmpNHol++; }
+        else { cSumW += d.value; cmpNWork++; }
+      });
+      cmpAvgWork = cmpNWork ? cSumW/cmpNWork : 0;
+      cmpAvgHol  = cmpNHol  ? cSumH/cmpNHol  : 0;
+    }
 
     var values = dataPoints.map(function(d){return Math.round(d.value);});
     var labels = dataPoints.map(function(d){return d.label;});
@@ -2709,7 +2785,8 @@ async function renderCmpChart(){
     var strokeDash = [0];
 
     if(cmpState.showAvg){
-      series.push({ name:'ค่าเฉลี่ย', data:dataPoints.map(function(){return Math.round(avg);}), type:'line' });
+      var cmpAvgLine = Math.round(cmpState.period === 'day' ? cmpAvgWork : avg);
+      series.push({ name:'ค่าเฉลี่ย', data:dataPoints.map(function(){return cmpAvgLine;}), type:'line' });
       chartColors.push(TC.orange+'77');
       strokeW = cmpState.type==='bar' ? [0,2] : [2.5,2];
       strokeDash = [0,5];
@@ -2741,8 +2818,14 @@ async function renderCmpChart(){
     cmpChartInst = new ApexCharts(el, opts);
     cmpChartInst.render();
 
-    sumEl.innerHTML = '<span class="chip chip-green">⚡ รวม '+Math.round(total).toLocaleString()+' kWh</span> '+
-      '<span class="chip chip-green">เฉลี่ย '+Math.round(avg).toLocaleString()+' kWh/'+pl+'</span>';
+    var cmpAvgChips;
+    if(cmpState.period === 'day' && (cmpNWork || cmpNHol)){
+      cmpAvgChips = '<span class="chip chip-green">เฉลี่ยวันทำงาน '+Math.round(cmpAvgWork).toLocaleString()+' kWh ('+cmpNWork+' วัน)</span> '+
+                    '<span class="chip" style="background:rgba(251,146,60,.15);color:var(--orange);border:1px solid rgba(251,146,60,.4)">เฉลี่ยวันหยุด '+Math.round(cmpAvgHol).toLocaleString()+' kWh ('+cmpNHol+' วัน)</span>';
+    } else {
+      cmpAvgChips = '<span class="chip chip-green">เฉลี่ย '+Math.round(avg).toLocaleString()+' kWh/'+pl+'</span>';
+    }
+    sumEl.innerHTML = '<span class="chip chip-green">⚡ รวม '+Math.round(total).toLocaleString()+' kWh</span> ' + cmpAvgChips;
   }catch(e){ el.innerHTML='<div class="warn-box">❌ '+e.message+'</div>'; }
 }
 
