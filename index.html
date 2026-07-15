@@ -640,9 +640,71 @@ i svg{
       <div class="chart-container" id="sub-chart-el"></div>
       <div id="sub-chart-summary" style="margin-top:8px"></div>
     </div>
+
+    <!-- ── เทียบการใช้ไฟ 9 กลุ่มหลัก (ย้ายมาจากหน้าสรุป) ── -->
     <div class="card">
-      <div class="card-title">📊 รวมทุก Sub (kWh สะสม)</div>
-      <div id="all-chart"></div>
+      <div class="card-title">เทียบการใช้ไฟ 9 กลุ่มหลัก</div>
+      <div class="chart-ctrl">
+        <span class="chart-ctrl-label">มุมมอง:</span>
+        <button class="ctrl-btn green" id="g9-p-day" onclick="setG9Period('day')">รายวัน</button>
+        <button class="ctrl-btn" id="g9-p-month" onclick="setG9Period('month')">รายเดือน</button>
+        <button class="ctrl-btn" id="g9-p-year" onclick="setG9Period('year')">รายปี</button>
+      </div>
+      <div class="chart-ctrl">
+        <button class="ctrl-nav" onclick="navG9(-1)">◀</button>
+        <input class="ctrl-date" type="date" id="g9-date" onchange="renderG9Chart()">
+        <input class="ctrl-date" type="month" id="g9-month" onchange="renderG9Chart()" style="display:none">
+        <select class="ctrl-date" id="g9-year" onchange="renderG9Chart()" style="display:none"></select>
+        <button class="ctrl-nav" onclick="navG9(1)">▶</button>
+        <span style="font-size:11px;color:var(--accent);font-weight:700" id="g9-label"></span>
+      </div>
+      <div class="chart-ctrl">
+        <span class="chart-ctrl-label">เรียง:</span>
+        <button class="ctrl-btn green" id="g9-s-default" onclick="setG9Sort('default')">ตามกลุ่ม</button>
+        <button class="ctrl-btn" id="g9-s-desc" onclick="setG9Sort('desc')">มาก→น้อย</button>
+        <button class="ctrl-btn" id="g9-s-asc" onclick="setG9Sort('asc')">น้อย→มาก</button>
+        <div class="ctrl-sep"></div>
+        <button class="ctrl-btn" id="g9-pct" onclick="toggleG9Pct()">แสดง %</button>
+      </div>
+      <div class="chart-container" id="g9-chart-el"></div>
+      <div id="g9-chart-summary" style="margin-top:8px"></div>
+    </div>
+
+    <!-- ── กราฟเทียบต่อกลุ่ม (ย้ายมาจากหน้าสรุป) ── -->
+    <div class="card">
+      <div class="card-title">กราฟเทียบการใช้ไฟแต่ละกลุ่ม</div>
+      <div class="f-row">
+        <label class="f-label">เลือกกลุ่ม</label>
+        <select class="f-input" id="cmp-group" onchange="renderCmpChart()"></select>
+      </div>
+      <div class="chart-ctrl">
+        <span class="chart-ctrl-label">ช่วงเร็ว:</span>
+        <button class="ctrl-btn yellow" onclick="setCmpQuick('7d')">7 วัน</button>
+        <button class="ctrl-btn yellow" onclick="setCmpQuick('30d')">30 วัน</button>
+        <button class="ctrl-btn yellow" onclick="setCmpQuick('thisM')">เดือนนี้</button>
+        <button class="ctrl-btn yellow" onclick="setCmpQuick('lastM')">เดือนก่อน</button>
+        <button class="ctrl-btn yellow" onclick="setCmpQuick('3m')">3 เดือน</button>
+        <button class="ctrl-btn yellow" onclick="setCmpQuick('all')">ทั้งหมด</button>
+      </div>
+      <div class="chart-ctrl">
+        <span class="chart-ctrl-label">จาก:</span>
+        <input class="ctrl-date" type="date" id="cmp-from" onchange="renderCmpChart()">
+        <span class="chart-ctrl-label">ถึง:</span>
+        <input class="ctrl-date" type="date" id="cmp-to" onchange="renderCmpChart()">
+      </div>
+      <div class="chart-ctrl">
+        <span class="chart-ctrl-label">มุมมอง:</span>
+        <button class="ctrl-btn green" id="cmp-p-day" onclick="setCmpPeriod('day')">รายวัน</button>
+        <button class="ctrl-btn" id="cmp-p-month" onclick="setCmpPeriod('month')">รายเดือน</button>
+        <button class="ctrl-btn" id="cmp-p-year" onclick="setCmpPeriod('year')">รายปี</button>
+        <div class="ctrl-sep"></div>
+        <button class="ctrl-btn on" id="cmp-avg" onclick="toggleCmpOpt('avg')">เส้นเฉลี่ย</button>
+        <div class="ctrl-sep"></div>
+        <button class="ctrl-btn green" id="cmp-t-bar" onclick="setCmpType('bar')">แท่ง</button>
+        <button class="ctrl-btn" id="cmp-t-line" onclick="setCmpType('line')">เส้น</button>
+      </div>
+      <div class="chart-container" id="cmp-chart-el"></div>
+      <div id="cmp-chart-summary" style="margin-top:8px"></div>
     </div>
   </div>
 
@@ -651,9 +713,6 @@ i svg{
      ════════════════════════════════════════════════════════════ -->
 
 <!-- ──────────── SUMMARY PANEL ──────────── -->
-<!-- ════════════════════════════════════════════════════════════
-     แทนที่ panel-summary เดิมทั้งบล็อก ด้วยอันนี้
-     ════════════════════════════════════════════════════════════ -->
 <div class="panel" id="panel-summary">
 
   <!-- ── ตารางรายงานรายวันทั้งเดือน ── -->
@@ -669,73 +728,6 @@ i svg{
       </div>
     </div>
     <div id="report-area"><div class="section-empty">📋 เลือกเดือนเพื่อดูรายงาน</div></div>
-  </div>
-   
-   
-<!-- ── เทียบการใช้ไฟ 9 กลุ่มหลัก ── -->
-  <div class="card">
-    <div class="card-title">เทียบการใช้ไฟ 9 กลุ่มหลัก</div>
-    <div class="chart-ctrl">
-      <span class="chart-ctrl-label">มุมมอง:</span>
-      <button class="ctrl-btn green" id="g9-p-day" onclick="setG9Period('day')">รายวัน</button>
-      <button class="ctrl-btn" id="g9-p-month" onclick="setG9Period('month')">รายเดือน</button>
-      <button class="ctrl-btn" id="g9-p-year" onclick="setG9Period('year')">รายปี</button>
-    </div>
-    <div class="chart-ctrl">
-      <button class="ctrl-nav" onclick="navG9(-1)">◀</button>
-      <input class="ctrl-date" type="date" id="g9-date" onchange="renderG9Chart()">
-      <input class="ctrl-date" type="month" id="g9-month" onchange="renderG9Chart()" style="display:none">
-      <select class="ctrl-date" id="g9-year" onchange="renderG9Chart()" style="display:none"></select>
-      <button class="ctrl-nav" onclick="navG9(1)">▶</button>
-      <span style="font-size:11px;color:var(--accent);font-weight:700" id="g9-label"></span>
-    </div>
-    <div class="chart-ctrl">
-      <span class="chart-ctrl-label">เรียง:</span>
-      <button class="ctrl-btn green" id="g9-s-default" onclick="setG9Sort('default')">ตามกลุ่ม</button>
-      <button class="ctrl-btn" id="g9-s-desc" onclick="setG9Sort('desc')">มาก→น้อย</button>
-      <button class="ctrl-btn" id="g9-s-asc" onclick="setG9Sort('asc')">น้อย→มาก</button>
-      <div class="ctrl-sep"></div>
-      <button class="ctrl-btn" id="g9-pct" onclick="toggleG9Pct()">แสดง %</button>
-    </div>
-    <div class="chart-container" id="g9-chart-el"></div>
-    <div id="g9-chart-summary" style="margin-top:8px"></div>
-  </div>
-   
-  <!-- ── กราฟเทียบต่อกลุ่ม ── -->
-  <div class="card">
-    <div class="card-title">กราฟเทียบการใช้ไฟแต่ละกลุ่ม</div>
-    <div class="f-row">
-      <label class="f-label">เลือกกลุ่ม</label>
-      <select class="f-input" id="cmp-group" onchange="renderCmpChart()"></select>
-    </div>
-    <div class="chart-ctrl">
-      <span class="chart-ctrl-label">ช่วงเร็ว:</span>
-      <button class="ctrl-btn yellow" onclick="setCmpQuick('7d')">7 วัน</button>
-      <button class="ctrl-btn yellow" onclick="setCmpQuick('30d')">30 วัน</button>
-      <button class="ctrl-btn yellow" onclick="setCmpQuick('thisM')">เดือนนี้</button>
-      <button class="ctrl-btn yellow" onclick="setCmpQuick('lastM')">เดือนก่อน</button>
-      <button class="ctrl-btn yellow" onclick="setCmpQuick('3m')">3 เดือน</button>
-      <button class="ctrl-btn yellow" onclick="setCmpQuick('all')">ทั้งหมด</button>
-    </div>
-    <div class="chart-ctrl">
-      <span class="chart-ctrl-label">จาก:</span>
-      <input class="ctrl-date" type="date" id="cmp-from" onchange="renderCmpChart()">
-      <span class="chart-ctrl-label">ถึง:</span>
-      <input class="ctrl-date" type="date" id="cmp-to" onchange="renderCmpChart()">
-    </div>
-    <div class="chart-ctrl">
-      <span class="chart-ctrl-label">มุมมอง:</span>
-      <button class="ctrl-btn green" id="cmp-p-day" onclick="setCmpPeriod('day')">รายวัน</button>
-      <button class="ctrl-btn" id="cmp-p-month" onclick="setCmpPeriod('month')">รายเดือน</button>
-      <button class="ctrl-btn" id="cmp-p-year" onclick="setCmpPeriod('year')">รายปี</button>
-      <div class="ctrl-sep"></div>
-      <button class="ctrl-btn on" id="cmp-avg" onclick="toggleCmpOpt('avg')">เส้นเฉลี่ย</button>
-      <div class="ctrl-sep"></div>
-      <button class="ctrl-btn green" id="cmp-t-bar" onclick="setCmpType('bar')">แท่ง</button>
-      <button class="ctrl-btn" id="cmp-t-line" onclick="setCmpType('line')">เส้น</button>
-    </div>
-    <div class="chart-container" id="cmp-chart-el"></div>
-    <div id="cmp-chart-summary" style="margin-top:8px"></div>
   </div>
 
 </div>
@@ -925,31 +917,43 @@ const REPORT_UTIL = [
   { key:'BOILER',      name:'BOILER',         ids:['BOIL-PS'] }
 ];
 
-/* ───────── หมวดตามชนิดโหลด (หน้าเลือกตู้) ───────── */
+/* ───────── หมวดตามสถานที่ / Shop (หน้าเลือกตู้) ───────── */
+/* อิงจากฟิลด์ zone ของแต่ละ sub (มาจาก _SUBS sheet) แทนการ hardcode รายชื่อ id
+   ข้อดี: sub ใหม่ที่เพิ่มเข้ามาทีหลังจะถูกจัดหมวดอัตโนมัติตาม zone ที่ตั้งไว้
+   หมวดที่ zone ไม่ตรงกับรายการด้านล่าง จะตกไปอยู่ใน "อื่นๆ" (กันไม่ให้ตู้หายไปจากหน้าจอ) */
+const ZONE_CATEGORY_MAP = {
+  'BODY':        'BODY SHOP',
+  'PAINT':       'PAINT SHOP',
+  'LA':          'LA SHOP',
+  'UA':          'UA SHOP',
+  'PT7,8':       'PT7,8',
+  'FRAME':       'FRAME SHOP',
+  'OFFICE':      'HEAD OFFICE',
+  'FR':          'FR SHOP',
+  'OLD CANTEEN': 'OLD CANTEEN',
+  'AIR COMP':    'UTILITY PLANT',
+  'Utility':     'UTILITY PLANT'
+};
 const LOAD_CATEGORIES = [
-  { name:'Substation',  icon:'🏭', match: id => id.startsWith('SUB-') },
-  { name:'A/C',         icon:'❄️', ids:['AC-02','AC-03','AC-05','AC-06','AC-07','AC-08','CTRLAC'] },
-  { name:'Chiller',     icon:'🧊', ids:['CHIL-AS12','CHIL-AS3','CHIL-AS4','EDCPS','CT-AC','CT-ED','CT-AS','EDCF-01','EDCF-02'] },
-  { name:'Old Canteen', icon:'🍽️', ids:['CANT-10','LP-01','PP-01'] },
-  { name:'Old Office',  icon:'🏢', ids:['DB-01','DBAC-OLD','LP1-3P'] },
-  { name:'RO',          icon:'💧', ids:['RO-01','RO-02'] },
-  { name:'DI',          icon:'💧', ids:['DI-01'] },
-  { name:'WWT',         icon:'♻️', ids:['WWT-01'] },
-  { name:'Boiler',      icon:'🔥', ids:['BOIL-PS','BOIL-FR'] },
-  { name:'Water',       icon:'🚰', ids:['CITYW'] },
-  { name:'Battery',     icon:'🔋', ids:['BAT-01','BAT-02','BATCHG'] },
-  { name:'อื่นๆ',        icon:'📦', ids:['CKD-AD','SKID-01','SEPTIC','SEPTIC-N'] }
+  { name:'BODY SHOP',     icon:'🏭' },
+  { name:'PAINT SHOP',    icon:'🎨' },
+  { name:'LA SHOP',       icon:'🔧' },
+  { name:'UA SHOP',       icon:'⚙️' },
+  { name:'PT7,8',         icon:'🏗️' },
+  { name:'FRAME SHOP',    icon:'🔩' },
+  { name:'HEAD OFFICE',   icon:'🏢' },
+  { name:'FR SHOP',       icon:'🚧' },
+  { name:'OLD CANTEEN',   icon:'🍽️' },
+  { name:'UTILITY PLANT', icon:'💧' },
+  { name:'อื่นๆ',          icon:'📦' }
 ];
-function getCategoryOf(subId){
-  for(const cat of LOAD_CATEGORIES){
-    if(cat.match && cat.match(subId)) return cat.name;
-    if(cat.ids && cat.ids.includes(subId)) return cat.name;
-  }
-  return 'อื่นๆ';
+function getCategoryOf(sub){
+  const zone = sub && sub.zone;
+  return ZONE_CATEGORY_MAP[zone] || 'อื่นๆ';
 }
 
 /* ───────── CONFIG ───────── */
-const API_URL     = 'https://script.google.com/macros/s/AKfycbwT3ozGiUKBrO1U33k0JGlIu9nQc0gyLNQsieFaiOa9w9K5OMH0nNwGiBIG4vSdq3EFjg/exec';
+const API_URL     = 'https://script.google.com/macros/s/AKfycbwnMG0pAZGZo4yZfQtioQ-Uj1hP8ZbrWz5PfNlLuWc6XRl4kU69pyJUpO-pfhsiB1du7w/exec';
 const QR_BASE_URL = 'https://ramesimct.github.io/Substation-V2/';
 const ABNORMAL_MULTIPLIER = 5;
 
@@ -964,7 +968,7 @@ let activeFilter           = { sub:'', user:'', from:'', to:'' };
 let appMode                = 'basic';
 let activeSub              = null;
 let editSubIndex           = null;
-let isConnected            = false;
+let isConnected             = false;
 let currentEditingRecordId = null;
 let currentUser            = '';
 let reportRaw              = [];
@@ -1212,19 +1216,43 @@ async function apiPost(body, retries = 2){
    invalidate เมื่อ save/edit/delete record หรือแก้ปฏิทิน
 */
 let summaryCache = {};
+// ขยาย [dateFrom, dateTo] ให้คลุมเดือนเต็มทั้งสองฝั่ง — ใช้เฉพาะ granularity='day'
+// เหตุผล: G9 chart แบบรายวันขอข้อมูลเป็นหน้าต่าง 8 วัน (pick..pick+7) แล้วเลื่อนทีละ 1 วันตอนกด ◀▶
+// ถ้า cache key ผูกกับ dateFrom/dateTo ตรงๆ จะ miss cache ทุกครั้งที่เลื่อน ทั้งที่ข้อมูลทับกัน ~87%
+// การ snap ให้คลุมเต็มเดือนทำให้การเลื่อนวันภายในเดือนเดียวกันได้ key เดิม → hit cache ทันที
+// ไม่มี network round-trip เลย (ตรงข้ามกับ cache เดิมที่ยัง miss ทุกครั้งแม้ backend จะมี month-cache
+// อยู่แล้วก็ตาม เพราะ backend cache ช่วยแค่ข้าม _readAllSheet() แต่ HTTP round-trip ไป Apps Script
+// ยังเกิดอยู่ดี — ซึ่งเป็นส่วนที่กินเวลาจริง (วัดได้ 3-8 วิ ต่อครั้ง เทียบกับ compute ≈1ms)
+// ผลลัพธ์ที่ backend คืนมายังถูกต้องสำหรับช่วงที่ผู้เรียกต้องการจริง เพราะ caller ทุกจุด (loadReport,
+// renderG9Chart, renderCmpChart) กรอง/มองหาเฉพาะ date key ที่ต้องการเองอยู่แล้วจากผลลัพธ์ที่ได้กว้างขึ้น
+function _snapDayRangeToMonths(dateFrom, dateTo){
+  const from = dateFrom.slice(0,7) + '-01';
+  const [ty, tm] = dateTo.slice(0,7).split('-').map(Number);
+  const lastDay = new Date(ty, tm, 0).getDate();
+  const to = dateTo.slice(0,7) + '-' + String(lastDay).padStart(2,'0');
+  return [from, to];
+}
 async function getSummaryCached(dateFrom, dateTo, granularity){
-  const key = `${dateFrom||''}|${dateTo||''}|${granularity||'day'}`;
+  let qFrom = dateFrom, qTo = dateTo;
+  if(granularity === 'day' && dateFrom && dateTo){
+    [qFrom, qTo] = _snapDayRangeToMonths(dateFrom, dateTo);
+  }
+  const key = `${qFrom||''}|${qTo||''}|${granularity||'day'}`;
   if(summaryCache[key]){
     if(DEBUG_PERF) console.log(`⏱ getSummaryCached [HIT] ${key}: 0 ms (cached)`);
     return summaryCache[key];
   }
   const _t0 = (DEBUG_PERF && performance.now()) || 0;
-  const res = await apiPost({ action:'getMonthlySummary', dateFrom, dateTo, granularity });
+  const res = await apiPost({ action:'getMonthlySummary', dateFrom:qFrom, dateTo:qTo, granularity });
   if(DEBUG_PERF) console.log(`⏱ getSummaryCached [MISS→network] ${key}: ${(performance.now()-_t0).toFixed(0)} ms`);
   if(res && res.success) summaryCache[key] = res;  // cache เฉพาะ response ที่สำเร็จ
   return res;
 }
-function invalidateSummaryCache(){ summaryCache = {}; }
+function invalidateSummaryCache(reason){
+  const keys = Object.keys(summaryCache).length;
+  summaryCache = {};
+  console.log(`🗑 invalidateSummaryCache — ล้าง ${keys} keys, reason: ${reason||'ไม่ระบุ'}`);
+}
 
 /* ════════════ SAFE CHART TEARDOWN ════════════
    ป้องกัน crash "Cannot read properties of undefined (reading 'node')"
@@ -1280,14 +1308,20 @@ function setSyncStatus(status, msg){
   }
 }
 function loadFromServer(){
-  fetch(API_URL)
-    .then(res => { if(!res.ok) throw new Error('Network error'); return res.json(); })
+  const _plApi = perfLabel('loadFromServer:api'); perfStart(_plApi);
+  return fetch(API_URL)
+    .then(res => {
+      perfEnd(_plApi);
+      if(!res.ok) throw new Error('Network error');
+      const _plJson = perfLabel('loadFromServer:jsonParse'); perfStart(_plJson);
+      return res.json().then(data => { perfEnd(_plJson); return data; });
+    })
     .then(data => {
       if(!data || data.status === 'error') throw new Error(data?.message || 'Server error');
       if(data.subs     && Array.isArray(data.subs))     subs         = data.subs;
       if(data.records  && Array.isArray(data.records))  records      = computeUsed(data.records);
       if(data.calendar && Array.isArray(data.calendar)) workCalendar = data.calendar;
-      persist(); isConnected = true; invalidateSummaryCache(); renderAll();
+      persist(); isConnected = true; invalidateSummaryCache('loadFromServer'); renderAll();
       // ✅ ถ้ากำลังอยู่หน้ากรอก อัปเดตปุ่ม save ให้เป็นออนไลน์
       if(activeSub){
         const sb = document.getElementById('save-btn');
@@ -1303,14 +1337,20 @@ function refreshData(){
   if(btn){ btn.disabled = true; btn.innerHTML = '⏳ กำลังโหลด...'; }
   setSyncStatus('busy','กำลังโหลดข้อมูล...');
 
+  const _plApiR = perfLabel('refreshData:api'); perfStart(_plApiR);
   fetch(API_URL)
-    .then(res => { if(!res.ok) throw new Error('Network error'); return res.json(); })
+    .then(res => {
+      perfEnd(_plApiR);
+      if(!res.ok) throw new Error('Network error');
+      const _plJsonR = perfLabel('refreshData:jsonParse'); perfStart(_plJsonR);
+      return res.json().then(data => { perfEnd(_plJsonR); return data; });
+    })
     .then(data => {
       if(!data || data.status === 'error') throw new Error(data?.message || 'Server error');
       if(data.subs     && Array.isArray(data.subs))     subs         = data.subs;
       if(data.records  && Array.isArray(data.records))  records      = computeUsed(data.records);
       if(data.calendar && Array.isArray(data.calendar)) workCalendar = data.calendar;
-      persist(); isConnected = true; invalidateSummaryCache(); renderAll();
+      persist(); isConnected = true; invalidateSummaryCache('refreshData'); renderAll();
       setSyncStatus('ok',`โหลดสำเร็จ — ${subs.length} ตู้`);
     })
     .catch(err => {
@@ -1359,7 +1399,7 @@ function computeUsed(rawRecords){
 }
 
 /* ════════════ INIT ════════════ */
-function init(){
+async function init(){
   if(!Array.isArray(subs)) subs = [];
   subs = subs.map(s => ({ ...s, decimal: s.decimal !== undefined ? s.decimal : 0 }));
   initTheme(); setNow();
@@ -1373,27 +1413,18 @@ function init(){
     localStorage.setItem('loginMode','basic');
     closeLoginGate();
     goTab('entry');
-  }
-  loadFromServer();
-
-  // ✅ เปิดตู้จาก QR หลัง subs โหลดเสร็จ (รอได้สูงสุด ~8 วิ)
-  if(p){
-    openSubFromQR(p.toUpperCase(), 0);
-  }
-}
-
-// ── เปิดตู้จาก QR: รอจน subs พร้อมก่อน ──
-function openSubFromQR(subId, tries){
-  const found = subs.find(s => s.id === subId);
-  if(found){
-    selectSub(found.id);
-    toast('📍 เปิด ' + found.id + ' จาก QR','ok');
-    return;
-  }
-  if(tries < 40){            // ลองซ้ำ 40 ครั้ง × 200ms = 8 วินาที
-    setTimeout(() => openSubFromQR(subId, tries+1), 200);
+    // รอโหลดข้อมูลจริงจบก่อนค่อยเปิดตู้ — แทนการ poll ด้วย setTimeout ทุก 200ms สูงสุด 8 วิ
+    // loadFromServer() คืน promise แล้ว (แก้ไปพร้อมกับ instrumentation ด้านบน) จึง await ตรงๆ ได้
+    await loadFromServer();
+    const found = subs.find(s => s.id === p.toUpperCase());
+    if(found){
+      selectSub(found.id);
+      toast('📍 เปิด ' + found.id + ' จาก QR','ok');
+    } else {
+      toast('ไม่พบ Sub: ' + p.toUpperCase() + ' (ลองรีเฟรช)','err');
+    }
   } else {
-    toast('ไม่พบ Sub: ' + subId + ' (ลองรีเฟรช)','err');
+    loadFromServer();
   }
 }
 
@@ -1425,8 +1456,8 @@ function goTab(name){
   const tabEl = document.querySelectorAll('.tab')[idx];
   if(tabEl) tabEl.classList.add('active');
   if(name === 'data')     { renderData(); renderStats(); }
-  if(name === 'chart')    { populateDDs(); setSubQuick('30d'); renderAllChart(); }
-  if(name === 'summary')  { buildMonthOptions(); buildCompareGroupOptions(); loadReport(); initG9Pickers(); renderG9Chart(); }
+  if(name === 'chart')    { populateDDs(); setSubQuick('30d'); buildCompareGroupOptions(); initG9Pickers(); renderG9Chart(); }
+  if(name === 'summary')  { buildMonthOptions(); loadReport(); }
   if(name === 'qr')       { renderQR(); }
   if(name === 'settings') { renderSubList(); renderCalendarList(); }
 }
@@ -1638,13 +1669,13 @@ async function addCalendarDay(){
   persist(); renderCalendarList();
   document.getElementById('cal-date').value = ''; document.getElementById('cal-note').value = '';
   toast('✅ เพิ่มวันพิเศษแล้ว','ok');
-  try{ await apiPost({ action:'setCalendarDay', date, type, note }); invalidateSummaryCache(); }catch(e){ toast('⚠️ Sync ปฏิทินล้มเหลว','warn'); }
+  try{ await apiPost({ action:'setCalendarDay', date, type, note }); invalidateSummaryCache('setCalendarDay:'+date); }catch(e){ toast('⚠️ Sync ปฏิทินล้มเหลว','warn'); }
 }
 async function removeCalendarDay(date){
   if(!confirm(`ลบวันพิเศษ ${fmtDate(date)}?`)) return;
   workCalendar = workCalendar.filter(c => c.date !== date);
   persist(); renderCalendarList(); toast('ลบแล้ว');
-  try{ await apiPost({ action:'deleteCalendarDay', date }); invalidateSummaryCache(); }catch(e){}
+  try{ await apiPost({ action:'deleteCalendarDay', date }); invalidateSummaryCache('deleteCalendarDay:'+date); }catch(e){}
 }
 function renderCalendarList(){
   const box = document.getElementById('cal-list');
@@ -1688,9 +1719,10 @@ function renderPaginationControls(totalItems){
   nav.appendChild(nextBtn);
 }
 function renderTable(){
+  const _plT = perfLabel('renderTable(rows='+filteredRecords.length+')'); perfStart(_plT);
   const tbody    = document.getElementById('main-body');
   const emptyBox = document.getElementById('main-empty');
-  if(!tbody || !emptyBox) return;
+  if(!tbody || !emptyBox) { perfEnd(_plT); return; }
   tbody.innerHTML = '';
   const total    = filteredRecords.length;
   const startIdx = (currentPage - 1) * pageSize;
@@ -1703,7 +1735,7 @@ function renderTable(){
   if(count) count.textContent = `(${total} รายการ${isFilterActive() ? ' — filtered' : ''})`;
   const badge = document.getElementById('filter-badge');
   if(badge) badge.style.display = isFilterActive() ? 'inline-flex' : 'none';
-  if(total === 0){ emptyBox.style.display = 'block'; if(document.getElementById('pageNav')) document.getElementById('pageNav').innerHTML = ''; return; }
+  if(total === 0){ emptyBox.style.display = 'block'; if(document.getElementById('pageNav')) document.getElementById('pageNav').innerHTML = ''; perfEnd(_plT); return; }
   emptyBox.style.display = 'none';
   tbody.innerHTML = pageItems.map(r => `<tr>
     <td class="td-sub">${r.subId}</td><td>${fmtDate(r.date)}</td><td>${fmtTime(r.time)}</td>
@@ -1715,6 +1747,7 @@ function renderTable(){
       <button class="btn btn-danger btn-sm"  onclick="deleteRecord('${r.id}')">🗑</button>
     </div></td></tr>`).join('');
   renderPaginationControls(total);
+  perfEnd(_plT);
 }
 
 /* ════════════ ZONES & SUB SELECTION ════════════ */
@@ -1731,7 +1764,7 @@ function renderZoneAreas(){
   }
   const grouped = {};
   LOAD_CATEGORIES.forEach(c => grouped[c.name] = []);
-  subs.forEach(s => { const cat = getCategoryOf(s.id); if(!grouped[cat]) grouped[cat]=[]; grouped[cat].push(s); });
+  subs.forEach(s => { const cat = getCategoryOf(s); if(!grouped[cat]) grouped[cat]=[]; grouped[cat].push(s); });
   LOAD_CATEGORIES.forEach(cat => {
     const list = grouped[cat.name];
     if(!list || !list.length) return;
@@ -1866,7 +1899,7 @@ async function doSaveRecord(sub, kwh, date, time, user, note){
   try{
     const payload = { id:rec.id, subId:rec.subId, subName:rec.subName, zone:rec.zone, date:rec.date, time:rec.time, kwh:rec.kwh, user:rec.user, note:rec.note, ts:rec.ts, editedTs:'', editedBy:'' };
     await apiPost({ action:'saveRecord', record:payload });
-    invalidateSummaryCache();
+    invalidateSummaryCache('saveRecord:'+rec.subId+'@'+rec.date);
     setSyncStatus('ok','บันทึกลง Sheets แล้ว');
   }catch(e){
     setSyncStatus('error','บันทึกในเครื่องแล้ว — Sync ล้มเหลว');
@@ -1939,7 +1972,7 @@ async function saveEdit(){
   try{
     const payload = { id:saved.id, subId:saved.subId, subName:saved.subName, zone:saved.zone, date:saved.date, time:saved.time, kwh:saved.kwh, user:saved.user, note:saved.note, ts:saved.ts, editedTs:saved.editedTs, editedBy:saved.editedBy };
     await apiPost({ action:'editRecord', record:payload });
-    invalidateSummaryCache();
+    invalidateSummaryCache('editRecord:'+saved.subId+'@'+saved.date);
     setSyncStatus('ok','แก้ไขสำเร็จ');
   }catch(e){ setSyncStatus('error','แก้ในเครื่องแล้ว — Sync ล้มเหลว'); }
 }
@@ -1951,7 +1984,7 @@ async function deleteRecord(id){
   records = computeUsed(records); persist();
   toast('ลบแล้ว'); renderAll();
   setSyncStatus('busy','กำลังลบจาก Sheets...');
-  try{ await apiPost({ action:'deleteRecord', id:String(id) }); invalidateSummaryCache(); setSyncStatus('ok','ลบสำเร็จ'); }
+  try{ await apiPost({ action:'deleteRecord', id:String(id) }); invalidateSummaryCache('deleteRecord:'+id); setSyncStatus('ok','ลบสำเร็จ'); }
   catch(e){ setSyncStatus('error','Offline — จะ sync เมื่อเชื่อมต่อได้'); }
 }
 
@@ -1994,6 +2027,9 @@ async function saveEditSub(){
 function isFilterActive(){ return !!(activeFilter.sub || activeFilter.user || activeFilter.from || activeFilter.to); }
 function renderData(){ applyFilter(); }
 function applyFilter(){
+  // วัดแยกจาก renderTable — เดิม 'renderAll:data' รวมทั้ง filter/sort + DOM paint ไว้ด้วยกัน
+  // แยกไว้เพื่อให้รู้ว่าถ้าช้า เป็นเพราะ filter/sort (ฝั่งนี้) หรือ DOM paint (renderTable)
+  const _plF = perfLabel('applyFilter(n='+records.length+')'); perfStart(_plF);
   const subVal   = document.getElementById('fl-sub').value;
   const userVal  = document.getElementById('fl-user')?.value.trim().toLowerCase() || '';
   const startVal = document.getElementById('fl-from').value;
@@ -2017,6 +2053,7 @@ function applyFilter(){
   } else if(sortVal === 'sub-asc'){
     filteredRecords.sort((a,b) => a.subId.localeCompare(b.subId) || (`${b.date} ${b.time||'00:00'}`).localeCompare(`${a.date} ${a.time||'00:00'}`));
   }
+  perfEnd(_plF);
   currentPage = 1; renderTable();
 }
 function clearFilter(){
@@ -2408,40 +2445,53 @@ function renderSubChart(){
     avgHol  = nHol  ? sumHol/nHol  : 0;
   }
 
-  var colors = data.map(function(d){ return subChartState.showHol && d.hol ? TC.orange : TC.green; });
-  var values = data.map(function(d){return Math.round(d.value);});
   var labels = data.map(function(d){return d.label;});
-
-  var series = [{ name:'ใช้ไฟ (kWh/'+pl+')', data:values }];
-  var chartColors = [TC.green];
-  var strokeW = subChartState.type==='bar' ? [0] : [2.5];
-  var strokeDash = [0];
-
-  if(subChartState.showAvg){
-    // day mode: เส้นเฉลี่ยอ้างอิงวันทำงาน (baseline ที่มีความหมาย) ไม่ใช่ค่าเฉลี่ยปนวันหยุด
-    var avgRound = Math.round(subChartState.period === 'day' ? avgWork : avg);
-    series.push({ name:'ค่าเฉลี่ย', data:data.map(function(){return avgRound;}), type:'line' });
-    chartColors.push(TC.accent+'77');
-    strokeW = subChartState.type==='bar' ? [0,2] : [2.5,2];
-    strokeDash = [0,5];
-  }
-
-  var useHolColors = subChartState.period==='day' && subChartState.showHol;
   var chartType = subChartState.type==='bar' ? 'bar' : 'line';
 
-  // ใส่ type ให้ทุก series เสมอ (ApexCharts mixed chart requirement)
-  series.forEach(function(s){ if(!s.type) s.type = chartType; });
+  // ── ApexCharts ไม่ส่ง dataPointIndex ให้ colors-callback ของ bar chart
+  //    (ยืนยันจาก apexcharts.js GitHub issue #586 — ยังเป็น open feature request)
+  //    ดังนั้นระบายสีทีละแท่งด้วย colors:[fn] แบบเดิมจะไม่ทำงาน (ได้สีเดียวเสมอ)
+  //    แก้โดยแยกเป็น 2 series (วันทำงาน/วันหยุด) แล้ว stack ทับกัน — แต่ละ index
+  //    จะมีค่าจริงแค่ series เดียว (อีก series เป็น null) จึงได้แท่งเดียวสีถูกต้อง
+  var useHolSplit = subChartState.period==='day' && subChartState.showHol && chartType==='bar';
 
-  // สีแต่ละแท่ง: ใช้ function แทน distributed (ทำงานร่วมกับ mixed chart ได้)
-  var barColorFn = useHolColors
-    ? function(opts){ var i = opts.dataPointIndex; return colors[i] || TC.green; }
-    : function(){ return TC.green; };
-  var seriesColors = [barColorFn];
-  if(subChartState.showAvg) seriesColors.push(TC.accent+'77');
+  var series, chartColors, strokeW, strokeDash;
+
+  if(useHolSplit){
+    var workData = data.map(function(d){ return d.hol ? null : Math.round(d.value); });
+    var holData  = data.map(function(d){ return d.hol ? Math.round(d.value) : null; });
+    series = [
+      { name:'ใช้ไฟ (วันทำงาน)', data:workData, type:'bar' },
+      { name:'ใช้ไฟ (วันหยุด)',  data:holData,  type:'bar' }
+    ];
+    chartColors = [TC.green, TC.orange];
+    strokeW = [0,0];
+    strokeDash = [0,0];
+    if(subChartState.showAvg){
+      var avgRoundS = Math.round(avgWork);
+      series.push({ name:'ค่าเฉลี่ย', data:data.map(function(){return avgRoundS;}), type:'line' });
+      chartColors.push(TC.accent+'77');
+      strokeW.push(2); strokeDash.push(5);
+    }
+  } else {
+    var values = data.map(function(d){return Math.round(d.value);});
+    series = [{ name:'ใช้ไฟ (kWh/'+pl+')', data:values, type:chartType }];
+    chartColors = [TC.green];
+    strokeW = chartType==='bar' ? [0] : [2.5];
+    strokeDash = [0];
+    if(subChartState.showAvg){
+      var avgRound = Math.round(subChartState.period==='day' ? avgWork : avg);
+      series.push({ name:'ค่าเฉลี่ย', data:data.map(function(){return avgRound;}), type:'line' });
+      chartColors.push(TC.accent+'77');
+      strokeW = chartType==='bar' ? [0,2] : [2.5,2];
+      strokeDash = [0,5];
+    }
+  }
 
   if(DEBUG_PERF) perfStart('renderSubChart:mount');
   var opts = {
-    chart:{ type:chartType, height:340, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
+    chart:{ type:'bar', height:340, fontFamily:'IBM Plex Mono,monospace', foreColor:TC.text2,
+      stacked: useHolSplit,
       toolbar:{ show:true, tools:{download:true,zoom:true,zoomin:true,zoomout:true,pan:true,reset:true} },
       background:'transparent', animations:{enabled:true,speed:400},
       events:{ mounted:function(){ if(DEBUG_PERF){ perfEnd('renderSubChart:mount'); } } } },
@@ -2450,7 +2500,7 @@ function renderSubChart(){
     yaxis:{ labels:{style:{fontSize:'11px',colors:TC.text2}, formatter:function(v){return Math.round(v).toLocaleString();}}, axisBorder:{show:false} },
     grid:{ borderColor:TC.border, strokeDashArray:3, xaxis:{lines:{show:false}}, yaxis:{lines:{show:true}} },
     tooltip:{ theme:TC.isDark?'dark':'light', style:{fontSize:'12px'}, y:{formatter:function(v){return v!=null?Math.round(v).toLocaleString()+' kWh':'—';}} },
-    colors: seriesColors,
+    colors: chartColors,
     responsive:[{ breakpoint:640, options:{ chart:{height:300}, xaxis:{labels:{rotate:-45, rotateAlways:true, hideOverlappingLabels:true, style:{fontSize:'8px'}}}, plotOptions:{bar:{columnWidth:'80%'}} } }],
     plotOptions:{ bar:{borderRadius:4,columnWidth:'70%'} },
     stroke:{ width:strokeW, dashArray:strokeDash },
@@ -2727,7 +2777,16 @@ async function renderCmpChart(){
 
   try{
     var gran = cmpState.period === 'day' ? 'day' : 'month';
-    var res = await getSummaryCached(fromVal, toVal, gran);
+    // เผื่อ buffer หลัง toVal 7 วัน เพื่อหา "ค่าถัดไป" มาคำนวณ used ของช่วงสุดท้ายที่แสดง
+    // (เหมือน loadReport()/renderG9Chart() — ถ้าไม่เผื่อ จะไม่มีข้อมูลมองไปข้างหน้า ทำให้
+    // แท่งสุดท้ายตกไปใช้ fallback lastKwh-firstKwh ภายใน period เดียวกัน ซึ่งมักจะได้ ~0)
+    var apiToVal = toVal;
+    if(toVal){
+      var extD = new Date(toVal+'T00:00:00');
+      extD.setDate(extD.getDate() + 7);
+      apiToVal = extD.toISOString().slice(0,10);
+    }
+    var res = await getSummaryCached(fromVal, apiToVal, gran);
     if(thisReq !== cmpReqId) return;
     if(!res||!res.success) throw new Error(res&&res.error||'error');
     var raw = res.summary || [];
@@ -2737,8 +2796,15 @@ async function renderCmpChart(){
 
     var dataPoints;
     if(cmpState.period === 'year'){
+      // จำกัดเฉพาะ period ที่อยู่ในช่วงที่เลือกจริง (ไม่รวม buffer 7 วันที่เผื่อไว้ข้างบน)
+      // ส่วน meterUsedOnDay ยังรับ allPeriods เต็ม (รวม buffer) เพื่อใช้หาค่าถัดไปได้ตามปกติ
+      var displayPeriods = allPeriods.filter(function(p){
+        if(fromVal && p < fromVal) return false;
+        if(toVal && p > toVal) return false;
+        return true;
+      });
       var byYear = {};
-      allPeriods.forEach(function(p){ ids.forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null) byYear[p.slice(0,4)]=(byYear[p.slice(0,4)]||0)+u; }); });
+      displayPeriods.forEach(function(p){ ids.forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null) byYear[p.slice(0,4)]=(byYear[p.slice(0,4)]||0)+u; }); });
       dataPoints = Object.entries(byYear).map(function(e){return {label:e[0],value:e[1]};});
     } else {
       // คำนวณค่าต่อ period ที่มีข้อมูล
@@ -2748,7 +2814,7 @@ async function renderCmpChart(){
         ids.forEach(function(id){ var u=meterUsedOnDay(meterMap,id,p,allPeriods); if(u!==null){total+=u;has=true;} });
         valByPeriod[p] = has ? total : 0;
       });
-      // สร้างทุก period ในช่วง (fill วัน/เดือนที่ขาดด้วย 0 → กราฟต่อเนื่อง ไม่ข้าม)
+      // สร้างทุก period ในช่วงที่แสดงจริง (ขอบเขต toVal เดิม ไม่ใช่ apiToVal ที่เผื่อ buffer)
       var fullPeriods = _cmpFillPeriods(allPeriods, fromVal, toVal, cmpState.period);
       dataPoints = fullPeriods.map(function(p){
         var label;
@@ -2827,19 +2893,6 @@ async function renderCmpChart(){
     }
     sumEl.innerHTML = '<span class="chip chip-green">⚡ รวม '+Math.round(total).toLocaleString()+' kWh</span> ' + cmpAvgChips;
   }catch(e){ el.innerHTML='<div class="warn-box">❌ '+e.message+'</div>'; }
-}
-
-/* ══════════════════════════════════════
-   renderAllChart — เก็บไว้ (ไม่เปลี่ยน)
-   ══════════════════════════════════════ */
-function renderAllChart(){
-  var area = document.getElementById('all-chart');
-  var summary = subs.map(function(s){
-    return { id:s.id, total:records.filter(function(r){return r.subId===s.id;}).reduce(function(a,r){return a+(parseFloat(r.used)||0);},0) };
-  }).filter(function(x){return x.total>0;}).sort(function(a,b){return b.total-a.total;});
-  if(!summary.length){ area.innerHTML='<div class="section-empty">📊 ยังไม่มีข้อมูล</div>'; return; }
-  var maxVal = Math.max.apply(null, summary.map(function(x){return x.total;}).concat([1]));
-  area.innerHTML = summary.map(function(x){return '<div class="bar-row"><div class="bar-label">'+x.id+'</div><div class="bar-track"><div class="bar-fill" style="width:'+Math.round(x.total/maxVal*100)+'%"></div></div><div class="bar-val">'+Math.round(x.total).toLocaleString()+'</div></div>';}).join('');
 }
 
 </script>
